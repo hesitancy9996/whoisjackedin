@@ -25,7 +25,7 @@ export default async function handler(req, res) {
   }
   try {
     const stats = await buildStats(String(range ?? ''), tz);
-    res.setHeader('cache-control', 'public, max-age=0, s-maxage=20, stale-while-revalidate=40');
+    res.setHeader('cache-control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=120');
     res.status(200).json(stats);
   } catch (err) {
     console.error(err);

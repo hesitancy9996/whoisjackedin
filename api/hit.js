@@ -1,0 +1,28 @@
+// The page calls this once when it opens, so visits can be counted. See lib/visits.js for what is kept.
+import { recordVisit } from '../lib/visits.js';
+
+export default async function handler(req, res) {
+  res.setHeader('cache-control', 'no-store');
+  if (req.method !== 'POST') {
+    res.setHeader('allow', 'POST');
+    res.status(405).end();
+    return;
+  }
+  // Only the page itself reports visits. Browsers say where a request comes from.
+  const site = req.headers['sec-fetch-site'];
+  if (!site || site === 'same-origin') {
+    try {
+      await recordVisit({
+        ip: String(req.headers['x-forwarded-for'] ?? '').split(',')[0].trim(),
+        agent: req.headers['user-agent'],
+        country: req.headers['x-vercel-ip-country'],
+        referrer: typeof req.body?.from === 'string' ? req.body.from.slice(0, 300) : '',
+        host: req.headers.host,
+        secret: process.env.CRON_SECRET ?? '',
+      });
+    } catch (err) {
+      console.warn(`could not count a visit: ${err.message}`);
+    }
+  }
+  res.status(204).end();
+}

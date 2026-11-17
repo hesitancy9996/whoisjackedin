@@ -2,17 +2,19 @@ import * as echarts from 'echarts/core';
 import { BarChart, EffectScatterChart, HeatmapChart, LineChart } from 'echarts/charts';
 import { DataZoomComponent, GridComponent, TooltipComponent, VisualMapContinuousComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
+import { act, bust, figureReady } from './bust.js';
 
 echarts.use([BarChart, EffectScatterChart, HeatmapChart, LineChart, DataZoomComponent, GridComponent, TooltipComponent, VisualMapContinuousComponent, CanvasRenderer]);
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const RANGE_LABEL = { '1h': 'last hour', '24h': 'last 24 hours', '7d': 'last 7 days', '30d': 'last 30 days', all: 'whole record' };
 const $ = (id) => document.getElementById(id);
-// The charts are drawn on a canvas, which cannot read CSS variables. The page's colors are read once here.
+// The charts are drawn on a canvas, which cannot read CSS variables. The page's colors are read into
+// these objects, and read again whenever the theme changes (see paint()).
 const rootStyle = getComputedStyle(document.documentElement);
 const token = (name) => rootStyle.getPropertyValue(name).trim();
 // Color follows the server, whatever order the list comes in.
-const SERIES = { rejacked: token('--s1'), revived: token('--s2'), mxoemu: token('--s3') };
+const SERIES = {};
 const colorOf = (id) => SERIES[id] ?? token('--muted');
 const DAY = 86400e3;
 // Days are counted in the viewer's time zone, to the nearest whole hour.
@@ -26,6 +28,7 @@ const monthDayFmt = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 
 const dateFmt = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' });
 const monthFmt = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric', timeZone: 'UTC' });
 const dayTimeFmt = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+const fullDateFmt = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
 const monthYearFmt = new Intl.DateTimeFormat(undefined, { month: 'short', year: 'numeric', timeZone: 'UTC' });
 const dayLabel = (date) => `${weekdayFmt.format(date)} ${date.getDate()}`;
 const hourLabel = (hour) => hourFmt.format(new Date(2024, 0, 1, hour % 24));
@@ -54,11 +57,19 @@ const todayKey = () => {
   return Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
 };
 
+/**
+ * Operatives are shown whole, averages included. Half an operative confuses more than it tells.
+ * An average that is above nothing but rounds to it is shown as "<1": a bar is drawn for it, so "0" would be wrong.
+ */
+const whole = (value) => (value > 0 && value < 0.5 ? '<1' : String(Math.round(value)));
 const players = (n) => `${n} ${n === 1 ? 'operative' : 'operatives'}`;
 const percent = (share) => {
   const pct = share * 100;
   return `${pct === 100 || pct === 0 ? pct : pct.toFixed(1)}%`;
 };
+
+/** Downtime in words, from how many checks were answered and how many of those found the server up. */
+const downtime = (answered, online) => (answered === online ? 'no downtime' : `down for ${duration((answered - online) * stats.sampleSeconds * 1000)}`);
 
 /** How long ago something was, in words. */
 const ago = (t) => (stats.now - t < 90e3 ? 'just now' : `${duration(stats.now - t)} ago`);
@@ -114,16 +125,7 @@ function niceStep(raw, wholeNumbers) {
   return wholeNumbers ? Math.max(1, step) : step;
 }
 
-const INK = {
-  text: token('--ink'),
-  soft: token('--ink-2'),
-  muted: token('--muted'),
-  grid: token('--grid'),
-  axis: token('--axis'),
-  surface: token('--surface'),
-  accent: token('--accent'),
-  accentDim: token('--accent-dim'),
-};
+const INK = {};
 const MONO = token('--mono');
 const stillPage = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const channels = (hex) => [0, 1, 2].map((i) => parseInt(hex.slice(1 + 2 * i, 3 + 2 * i), 16));
@@ -137,20 +139,48 @@ const mix = (hex, other, share) => {
     .join(', ')})`;
 };
 
-const AXIS_TEXT = { color: INK.muted, fontFamily: MONO, fontSize: 11 };
-const AXIS_LINE = { lineStyle: { color: INK.axis } };
-const SPLIT_LINE = { lineStyle: { color: INK.grid } };
+const AXIS_TEXT = { fontFamily: MONO, fontSize: 11 };
+const AXIS_LINE = { lineStyle: {} };
+const SPLIT_LINE = { lineStyle: {} };
 const TIP = {
-  backgroundColor: '#0d1c13',
-  borderColor: 'rgba(72, 255, 150, 0.35)',
   borderWidth: 1,
   padding: [8, 10],
-  textStyle: { color: INK.text, fontFamily: MONO, fontSize: 12.5 },
+  textStyle: { fontFamily: MONO, fontSize: 12.5 },
   extraCssText: 'border-radius: 4px; box-shadow: 0 6px 22px rgba(0, 0, 0, 0.6);',
   confine: true,
   transitionDuration: stillPage ? 0 : 0.12,
+  // Always near the top and beside the pointer, never on top of the value being read.
+  position: (point, params, dom, rect, size) => {
+    const [width] = size.contentSize;
+    const right = point[0] + 18;
+    return [right + width > size.viewSize[0] ? Math.max(4, point[0] - 18 - width) : right, 6];
+  },
 };
-const BAND_POINTER = { type: 'shadow', shadowStyle: { color: fade(INK.accent, 0.07) } };
+const BAND_POINTER = { type: 'shadow', shadowStyle: {} };
+
+/** Reads the current theme's colors into the objects the charts use. */
+function paint() {
+  Object.assign(SERIES, { rejacked: token('--s1'), revived: token('--s2'), mxoemu: token('--s3') });
+  Object.assign(INK, {
+    text: token('--ink'),
+    soft: token('--ink-2'),
+    muted: token('--muted'),
+    grid: token('--grid'),
+    axis: token('--axis'),
+    surface: token('--surface'),
+    page: token('--page'),
+    accent: token('--accent'),
+    accentDim: token('--accent-dim'),
+  });
+  AXIS_TEXT.color = INK.muted;
+  AXIS_LINE.lineStyle.color = INK.axis;
+  SPLIT_LINE.lineStyle.color = INK.grid;
+  TIP.backgroundColor = token('--tip');
+  TIP.borderColor = token('--tip-border');
+  TIP.textStyle.color = INK.text;
+  BAND_POINTER.shadowStyle.color = fade(INK.accent, 0.07);
+}
+paint();
 
 const charts = new Map();
 function chartIn(node) {
@@ -162,16 +192,40 @@ function chartIn(node) {
   return chart;
 }
 
-/** The box shown on hover: when it was, then one line per row as { id, name, value }. */
-function tipBox(when, rows) {
+/** The box shown on hover: when it was, what the numbers are, then one line per row as { id, name, value }. */
+function tipBox(when, what, rows) {
   const box = html('div');
-  box.append(html('div', 'tip-when', when));
+  box.append(html('div', 'tip-when', when), html('div', 'tip-what', what));
   for (const row of rows) {
     const line = html('div', row.sum ? 'tip-row sum' : 'tip-row');
     line.append(row.id ? key(row.id) : html('span'), html('span', 'name', row.name ?? ''), html('strong', '', row.value));
     box.append(line);
   }
   return box;
+}
+
+/**
+ * The one hover box every chart uses: when it was, what the numbers are, then a row per server.
+ * `values` has one entry per server: a number, null for no data, or undefined to leave the server out.
+ * Averages can be added up into a "together" row. Peaks cannot, since they happen at different moments.
+ */
+function serversTip(when, what, values, together) {
+  let sum = 0;
+  let exact = 0;
+  let known = 0;
+  const rows = [];
+  stats.servers.forEach((server, i) => {
+    if (values[i] === undefined) return;
+    if (values[i] !== null) {
+      // The whole numbers shown are added up, so the rows always add up to the "together" row.
+      sum += Math.round(values[i]);
+      exact += values[i];
+      known += 1;
+    }
+    rows.push({ id: server.id, name: server.name, value: values[i] === null ? '–' : whole(values[i]) });
+  });
+  if (together && known && rows.length > 1) rows.push({ name: 'together', value: sum === 0 && exact > 0 ? '<1' : String(sum), sum: true });
+  return tipBox(when, what, rows);
 }
 
 /** Shows a chart's hover box at one of its x values, as if the pointer were there. */
@@ -195,6 +249,19 @@ function arrowKeys(node, count, show) {
     index = null;
     charts.get(node)?.dispatchAction({ type: 'hideTip' });
   });
+}
+
+// A face from the game for each server. Decoration only: the servers are not tied to these sides.
+const FACES = { rejacked: ['lotus', ''], revived: ['general', ''], mxoemu: ['chessman', ''] };
+
+function faceOf(server) {
+  const [file, who] = FACES[server.id] ?? [];
+  return file ? bust(file, who) : '';
+}
+
+/** Uptime as a share of 1, colored like a status light: operational, partial outage or major outage. */
+function uptimeMark(share) {
+  return html('span', `uptime ${share >= 0.995 ? 'good' : share >= 0.95 ? 'warning' : 'critical'}`, percent(share));
 }
 
 /** What the status light and its label say for one server's latest answer. */
@@ -246,7 +313,11 @@ function serverCard(server, column) {
   const head = html('div', 'server-head');
   const badge = html('span', 'status');
   badge.append(html('span', `led ${status.led}`), status.text);
-  head.append(link(server.name, server.site), badge);
+  // The portrait, then status, name and world stacked beside it.
+  const titles = html('div', 'server-titles');
+  titles.append(badge, link(server.name, server.site));
+  if (server.about?.glance?.world) titles.append(html('div', 'world', `World ${server.about.glance.world}`));
+  head.append(faceOf(server), titles);
 
   const body = html('div', 'server-body');
   const count = html('div');
@@ -258,10 +329,14 @@ function serverCard(server, column) {
   if (stats.storage && stats.history.points.length > 1) body.append(sparkline(server, column));
 
   const lines = [];
-  if (now?.unsure) lines.push('Got an odd answer. Checking again.');
+  if (now?.unsure) {
+    const since = now.unsureSince ? ` since ${timeFmt.format(now.unsureSince)}` : '';
+    lines.push(`Odd answer${since}${now.unsureDetail ? ` ("${now.unsureDetail}")` : ''}. Showing the last count while it is checked.`);
+  }
   else if (now && !now.ok && known) lines.push(`No answer since ${timeFmt.format(now.failedAt)}`);
   else if (known) {
-    const parts = (now.details ?? []).map((detail) => `${detail.label}: ${detail.value}`);
+    // The world is already under the name.
+    const parts = (now.details ?? []).filter((detail) => detail.label !== 'World' || !server.about?.glance?.world).map((detail) => `${detail.label}: ${detail.value}`);
     parts.push(`checked ${timeFmt.format(now.checkedAt ? new Date(now.checkedAt) : now.at)}`);
     lines.push(parts.join(' · '));
   }
@@ -323,7 +398,7 @@ function rankList(target, entries, format, full) {
   target.replaceChildren(
     ...[...known, ...entries.filter((entry) => entry.value === null)].map((entry) => {
       const item = html('li');
-      const place = entry.value === null ? '–' : String(known.findIndex((other) => other.value === entry.value) + 1).padStart(2, '0');
+      const place = entry.value === null ? '–' : String(known.findIndex((other) => format(other.value) === format(entry.value)) + 1).padStart(2, '0');
       const line = html('div', 'rank-line');
       const name = html('span', 'rank-name');
       name.append(key(entry.server.id), entry.server.name);
@@ -351,13 +426,13 @@ function renderRanking() {
       const now = statusOf(server.now).counted ? `now: ${server.now.players}` : 'offline now';
       return { server, value: s.answered ? s.average : null, note: s.answered ? `most at once: ${s.peak}, ${now}` : 'No data yet' };
     }),
-    (value) => `${value.toFixed(1)} on average`,
+    (value) => `${whole(value)} on average`,
   );
   rankList(
     $('rank-uptime'),
     stats.servers.map((server) => {
       const s = server.summary;
-      return { server, value: s.answered ? s.availability : null, note: s.answered ? `${s.onlineChecks.toLocaleString()} of ${s.answered.toLocaleString()} checks` : 'No data yet' };
+      return { server, value: s.answered ? s.availability : null, note: s.answered ? downtime(s.answered, s.onlineChecks) : 'No data yet' };
     }),
     percent,
     1,
@@ -377,13 +452,20 @@ function cell(value, note) {
   return td;
 }
 
+function uptimeCell(share, note) {
+  const td = html('td');
+  td.append(uptimeMark(share));
+  if (note) td.append(html('div', 'note', note));
+  return td;
+}
+
 function renderSummary() {
   $('summary-rows').replaceChildren(
     ...stats.servers.map((server) => {
       const s = server.summary;
       const row = html('tr');
       if (!s.answered) row.append(rowHead(server), cell('–'), cell('–'), cell('–', 'No data yet'));
-      else row.append(rowHead(server), cell(String(s.peak), dayTimeFmt.format(s.peakAt)), cell(s.average.toFixed(1)), cell(percent(s.availability), `${s.answered.toLocaleString()} checks`));
+      else row.append(rowHead(server), cell(String(s.peak), dayTimeFmt.format(s.peakAt)), cell(whole(s.average)), uptimeCell(s.availability, downtime(s.answered, s.onlineChecks)));
       return row;
     }),
   );
@@ -414,7 +496,7 @@ function renderLegend() {
 }
 
 const PLAYERS_GRID = { left: 40, right: 16, top: 14, bottom: 84 };
-const SLIDER = {
+const sliderLook = () => ({
   type: 'slider',
   left: PLAYERS_GRID.left,
   right: PLAYERS_GRID.right,
@@ -430,23 +512,23 @@ const SLIDER = {
   moveHandleSize: 5,
   moveHandleStyle: { color: INK.accentDim, opacity: 0.7 },
   brushStyle: { color: fade(INK.accent, 0.2) },
-  emphasis: { handleStyle: { color: '#d4ffe5', borderColor: '#d4ffe5' }, moveHandleStyle: { color: INK.accent, opacity: 1 } },
+  emphasis: { handleStyle: { color: INK.text, borderColor: INK.text }, moveHandleStyle: { color: INK.accent, opacity: 1 } },
   textStyle: { color: INK.soft, fontFamily: MONO, fontSize: 11 },
   labelFormatter: (value) => dayTimeFmt.format(value),
-};
+});
 // How wide one point of the chart may be. All of them line up with the clock and the calendar.
 const MINUTE = 60e3;
 const STEP_WIDTHS = [2, 4, 6, 10, 20, 30, 60, 120, 180, 360, 1440, 2 * 1440, 7 * 1440, 14 * 1440, 28 * 1440].map((minutes) => minutes * MINUTE);
 
 let shownRange = null; // the range the chart was last drawn for
 let settle = null; // timer: the chart is redrawn once zooming stops
-let hovered = null; // the moment under the pointer, or null
 let steps = []; // what the chart is drawing, see joinSteps
 let stepMs = 0;
 
 const isZoomed = () => zoom.start > 0.01 || zoom.end < 99.99;
 /** 5.0 reads as 5, anything else keeps one decimal. */
 const amount = (value) => String(Math.round(value * 10) / 10);
+
 
 /** The stretch of time the chart covers: the loaded range, starting where the data starts. */
 function chartSpan() {
@@ -526,46 +608,35 @@ function timeLabel(value) {
   return view.to - view.from > 14 * DAY ? monthDayFmt.format(date) : dayLabel(date);
 }
 
-/**
- * The numbers beside the names in the legend. They show the moment under the pointer, or right now when
- * the pointer is elsewhere, so nothing has to float over the chart.
- */
+/** The numbers beside the names in the legend: the count on each server right now. */
 function renderReadout() {
-  const step = hovered === null ? null : steps.find((item) => hovered >= item.start && hovered < item.end);
   let sum = 0;
   let known = 0;
-  const down = [];
-  stats.servers.forEach((server, i) => {
-    const value = hovered === null ? (statusOf(server.now).counted ? server.now.players : null) : (step?.mean[i] ?? null);
-    legendValues.get(server.id)?.replaceChildren(value === null ? '–' : amount(value));
-    if (hiddenServers.has(server.id)) return;
-    if (value !== null) {
-      sum += value;
-      known += 1;
-    }
-    if (step && server.allTime.outages.some((o) => o.from < step.end && o.to > step.start)) down.push(server.name);
-  });
-  const together = known ? `${amount(sum)} together` : 'no data';
-  let text = `right now: ${together}`;
-  if (hovered !== null) {
-    text = step
-      ? `${dayTimeFmt.format(step.start)} to ${timeFmt.format(step.end)}, on average: ${together}` + (down.length ? `. Outage: ${down.join(', ')}` : '')
-      : `${dayTimeFmt.format(hovered)}: not recorded`;
+  for (const server of stats.servers) {
+    const value = statusOf(server.now).counted ? server.now.players : null;
+    legendValues.get(server.id)?.replaceChildren(value === null ? '–' : String(value));
+    if (value === null || hiddenServers.has(server.id)) continue;
+    sum += value;
+    known += 1;
   }
-  $('players-readout').textContent = text;
+  $('players-readout').textContent = `right now: ${known ? `${sum} together` : 'no data'}`;
 }
 
-/** Hover readout, and zoom by dragging across the chart. Touch is left alone so the page can still scroll. */
+/** The hover box for one moment of the main chart. */
+function playersTip(t) {
+  const step = steps.find((item) => t >= item.start && t < item.end);
+  if (!step) return tipBox(dayTimeFmt.format(t), 'not recorded', []);
+  const down = stats.servers.filter((server) => !hiddenServers.has(server.id) && server.allTime.outages.some((o) => o.from < step.end && o.to > step.start));
+  return serversTip(
+    `${dayTimeFmt.format(step.start)} to ${timeFmt.format(step.end)}`,
+    'average' + (down.length ? `, outage on ${down.map((server) => server.name).join(', ')}` : ''),
+    stats.servers.map((server, i) => (hiddenServers.has(server.id) ? undefined : step.mean[i])),
+    true,
+  );
+}
+
+/** Zoom by dragging across the chart. Touch is left alone so the page can still scroll. */
 function wirePlayers(chart, node) {
-  chart.on('updateAxisPointer', (event) => {
-    const value = event.axesInfo?.[0]?.value;
-    hovered = typeof value === 'number' ? value : null;
-    renderReadout();
-  });
-  chart.getZr().on('globalout', () => {
-    hovered = null;
-    renderReadout();
-  });
   chart.on('datazoom', (event) => {
     const { start, end } = event.batch?.[0] ?? event;
     if (typeof start !== 'number' || typeof end !== 'number') return;
@@ -747,8 +818,7 @@ function renderPlayers() {
       animationDuration: stillPage ? 0 : 700,
       animationDurationUpdate: stillPage ? 0 : 300,
       grid: PLAYERS_GRID,
-      // No floating box: the pointer draws a line and the legend shows the numbers.
-      tooltip: { trigger: 'axis', showContent: false, axisPointer: { type: 'line', snap: false, lineStyle: { color: INK.muted, width: 1, type: 'solid' }, label: { show: false } } },
+      tooltip: { ...TIP, trigger: 'axis', formatter: (params) => playersTip(params[0]?.axisValue ?? to), axisPointer: { type: 'line', snap: false, lineStyle: { color: INK.muted, width: 1, type: 'solid' }, label: { show: false } } },
       xAxis: {
         type: 'time',
         min: from,
@@ -769,7 +839,7 @@ function renderPlayers() {
       },
       dataZoom: [
         { type: 'inside', ...zoomBase, zoomOnMouseWheel: 'ctrl', moveOnMouseWheel: 'shift', moveOnMouseMove: false, preventDefaultMouseMove: false },
-        { ...SLIDER, ...zoomBase },
+        { ...sliderLook(), ...zoomBase },
       ],
       series,
     },
@@ -777,12 +847,13 @@ function renderPlayers() {
   );
 
   $('players-empty').hidden = steps.length >= 2;
-  $('players-head').replaceChildren(headCell('Time'), ...servers.map((server) => headCell(server.name)));
+  const most = Math.max(1, ...steps.flatMap((step) => step.mean.map((value) => value ?? 0)));
+  $('players-head').replaceChildren(headCell('Time'), ...servers.map(serverHead));
   $('players-rows').replaceChildren(
     ...steps
       .slice()
       .reverse()
-      .map((step) => tableRow(`${dayTimeFmt.format(step.start)} to ${timeFmt.format(step.end)}`, ...step.mean.map((value) => (value === null ? 'No data' : amount(value))))),
+      .map((step) => serverRow(`${dayTimeFmt.format(step.start)} to ${timeFmt.format(step.end)}`, step.mean, most)),
   );
 }
 
@@ -819,13 +890,7 @@ function renderDaily() {
       axisPointer: BAND_POINTER,
       formatter: (params) => {
         const t = days[params[0]?.dataIndex ?? days.length - 1];
-        return tipBox(
-          dateFmt.format(t) + (t === today ? ', so far' : ''),
-          servers.map((server, i) => {
-            const day = byDay[i].get(t);
-            return { id: server.id, name: server.name, value: day ? `peak ${day[3]} · avg ${(day[4] / day[1]).toFixed(1)}` : '–' };
-          }),
-        );
+        return serversTip(dateFmt.format(t) + (t === today ? ', so far' : ''), 'most at once', servers.map((_, i) => byDay[i].get(t)?.[3] ?? null), false);
       },
     },
     xAxis: { type: 'category', data: days.map((t) => dateFmt.format(t)), axisLine: AXIS_LINE, axisTick: { show: false }, axisLabel: { ...AXIS_TEXT, hideOverlap: true } },
@@ -965,16 +1030,25 @@ function renderBreakdown() {
       return th;
     }),
   );
+  // Peak and average get a bar behind the number, as long as the number is big.
+  const everything = [...pinned, ...rows];
+  const most = { peak: Math.max(1, ...everything.map((row) => row.peak)), average: Math.max(0.01, ...everything.map((row) => row.average)) };
+  const bar = (text, share) => {
+    const td = html('td', 'bar', text);
+    td.style.setProperty('--fill', `${Math.round(share * 100)}%`);
+    return td;
+  };
+  $('breakdown-rows').closest('table').style.setProperty('--c', colorOf(server.id));
   const line = (row, className) => {
     const tr = html('tr', className);
     tr.append(
       html('td', '', row.label),
-      html('td', '', String(row.peak)),
+      bar(String(row.peak), row.peak / most.peak),
       changeCell(row.gain, 0),
       changeCell(row.gainPct === null ? null : row.gainPct * 100, 1, '%'),
-      html('td', '', row.average.toFixed(2)),
+      bar(whole(row.average), row.average / most.average),
       changeCell(row.avgPct === null ? null : row.avgPct * 100, 1, '%'),
-      html('td', '', percent(row.online)),
+      uptimeCell(row.online),
     );
     return tr;
   };
@@ -1000,6 +1074,14 @@ function renderWeek() {
     local[(index + TZ_HOURS + 168) % 168] = slot;
   });
   const averages = local.map(([sum, n]) => (n ? sum / n : null));
+  // The hover box lists every server, so each one's week is worked out the same way.
+  const everyone = stats.servers.map((item) => {
+    const week = Array.from({ length: 168 }, () => null);
+    (item.allTime.weekUtc ?? []).forEach(([sum, n], index) => {
+      week[(index + TZ_HOURS + 168) % 168] = n ? sum / n : null;
+    });
+    return week;
+  });
   const top = Math.max(0, ...averages.map((v) => v ?? 0));
   const dayName = (weekday) => weekdayFmt.format(new Date(2024, 0, 7 + weekday)); // 7 January 2024 was a Sunday
   const order = [1, 2, 3, 4, 5, 6, 0];
@@ -1013,10 +1095,8 @@ function renderWeek() {
     tooltip: {
       ...TIP,
       trigger: 'item',
-      formatter: ({ value: [hour, row, value] }) =>
-        tipBox(`${dayName(order[row])}, ${hourLabel(hour)} to ${hourLabel(hour + 1)}`, [
-          { id: server.id, name: value < 0 ? 'no data yet' : 'on average', value: value < 0 ? '–' : value.toFixed(1) },
-        ]),
+      formatter: ({ value: [hour, row] }) =>
+        serversTip(`${dayName(order[row])}, ${hourLabel(hour)} to ${hourLabel(hour + 1)}`, 'average', everyone.map((week) => week[order[row] * 24 + hour]), true),
     },
     xAxis: {
       type: 'category',
@@ -1059,6 +1139,32 @@ function tableRow(...cells) {
   return row;
 }
 
+/** A column heading for one server: its color mark and its name. */
+function serverHead(server) {
+  const th = headCell('');
+  th.append(key(server.id), ` ${server.name}`);
+  return th;
+}
+
+/**
+ * A table row with one number per server. Each number sits on a bar in that server's color,
+ * as long as the number is big compared with `most`.
+ */
+function serverRow(label, values, most) {
+  const row = html('tr');
+  row.append(html('td', '', label));
+  stats.servers.forEach((server, i) => {
+    const value = values[i];
+    const td = html('td', value === null ? 'note' : 'bar', value === null ? 'No data' : whole(value));
+    if (value !== null) {
+      td.style.setProperty('--c', colorOf(server.id));
+      td.style.setProperty('--fill', `${Math.round((value / most) * 100)}%`);
+    }
+    row.append(td);
+  });
+  return row;
+}
+
 function renderUptime() {
   const today = todayKey();
   $('uptime').replaceChildren(
@@ -1079,7 +1185,7 @@ function renderUptime() {
           online += day.online;
           const share = day.online / day.answered;
           cellNode.className = share >= 0.995 ? 'good' : share >= 0.95 ? 'warning' : 'critical';
-          cellNode.title = `${label}: ${share >= 0.995 ? 'operational' : share >= 0.95 ? 'partial outage' : 'major outage'}, online ${percent(share)} of the time, ${day.answered.toLocaleString()} checks`;
+          cellNode.title = `${label}: ${share >= 0.995 ? 'operational' : share >= 0.95 ? 'partial outage' : 'major outage'}, online ${percent(share)} of the time, ${downtime(day.answered, day.online)}`;
         }
         strip.append(cellNode);
       }
@@ -1157,7 +1263,7 @@ function renderHours() {
     const { chart, peakNote } = hourBox(server);
     const slots = perServer[s];
     const top = Math.max(...slots.map((slot) => slot.average ?? 0)) || 1;
-    const step = niceStep(top / 3, false);
+    const step = niceStep(top / 3, true);
     chart.setOption({
       animationDuration: stillPage ? 0 : 600,
       grid: { left: 40, right: 12, top: 8, bottom: 24 },
@@ -1167,11 +1273,7 @@ function renderHours() {
         axisPointer: BAND_POINTER,
         formatter: (params) => {
           const hour = params[0]?.dataIndex ?? 0;
-          const slot = slots[hour];
-          const rows = slot.average === null
-            ? [{ id: server.id, name: 'no data yet', value: '–' }]
-            : [{ id: server.id, name: 'on average', value: slot.average.toFixed(1) }, { name: 'checks', value: slot.checks.toLocaleString() }];
-          return tipBox(`${hourLabel(hour)} to ${hourLabel(hour + 1)}`, rows);
+          return serversTip(`${hourLabel(hour)} to ${hourLabel(hour + 1)}`, 'average', perServer.map((each) => each[hour].average), true);
         },
       },
       xAxis: {
@@ -1199,10 +1301,11 @@ function renderHours() {
     peakNote.textContent = best < 0 || covered < 24 ? '' : `busiest around ${hourLabel(best)}`;
   });
 
-  $('hours-head').replaceChildren(headCell('Hour'), ...stats.servers.map((server) => headCell(server.name)));
+  const mostAnyHour = Math.max(1, ...perServer.flatMap((slots) => slots.map((slot) => slot.average ?? 0)));
+  $('hours-head').replaceChildren(headCell('Hour'), ...stats.servers.map(serverHead));
   $('hours-rows').replaceChildren(
     ...Array.from({ length: 24 }, (_, hour) =>
-      tableRow(`${hourLabel(hour)} to ${hourLabel(hour + 1)}`, ...perServer.map((slots) => (slots[hour].average === null ? 'No data' : slots[hour].average.toFixed(1)))),
+      serverRow(`${hourLabel(hour)} to ${hourLabel(hour + 1)}`, perServer.map((slots) => slots[hour].average), mostAnyHour),
     ),
   );
 }
@@ -1267,15 +1370,15 @@ function renderAbout() {
         const card = html('div', 'card');
         card.style.setProperty('--c', colorOf(server.id));
 
-        // Name and world on the left, the live status on the right.
-        const head = html('div', 'about-head');
-        const title = html('div');
-        title.append(html('h3', '', server.name));
-        if (about.glance?.world) title.append(html('div', 'world', `World ${about.glance.world}`));
+        // The same header as the cards at the top: portrait, then status, name and world.
+        const head = html('div', 'server-head');
         const status = statusOf(server.now);
         const badge = html('span', 'status');
         badge.append(html('span', `led ${status.led}`), status.counted ? `${status.text} · ${server.now.players}` : status.text);
-        head.append(title, badge);
+        const titles = html('div', 'server-titles');
+        titles.append(badge, html('h3', '', server.name));
+        if (about.glance?.world) titles.append(html('div', 'world', `World ${about.glance.world}`));
+        head.append(faceOf(server), titles);
 
         const chips = html('div', 'chips');
         for (const [label, field] of [['Join', 'access'], ['PvP', 'pvp'], ['Since', 'since']]) {
@@ -1321,10 +1424,24 @@ function renderAbout() {
 
 function renderFooter() {
   const sources = html('p', '', `numbers come from each server's own status page, checked every ${stats.sampleSeconds === 60 ? 'minute' : `${stats.sampleSeconds} seconds`}`);
-  const rule = html('p', '', 'one odd reading is checked again before a server is called down');
+  const rule = html('p', '', 'a server is called down only after 15 minutes without a live answer');
   const legal = html('p', '', 'fan page, not run by the server teams or the owners of The Matrix Online');
-  const art = html('p', '', 'the icons come from the game and belong to its owners');
+  const art = html('p', '', 'the icons, faces and falling code come from the game and belong to its owners');
   $('footer').replaceChildren(sources, rule, legal, art);
+  // A few facts about this page itself: how long it has been recording, and who came by.
+  const facts = [];
+  if (stats.since) facts.push(`recording since ${fullDateFmt.format(stats.since)}`);
+  const page = stats.page;
+  // Shown once there is something to show: a handful of visits says little.
+  if (page?.visits30 >= 100) {
+    const visits = [`${page.visits30.toLocaleString()} ${page.visits30 === 1 ? 'visit' : 'visits'} in 30 days`];
+    if (page.countries30) visits.push(`${page.countries30} ${page.countries30 === 1 ? 'country' : 'countries'}`);
+    if (page.phoneShare30 != null) visits.push(`${page.phoneShare30}% on phones`);
+    visits.push('counted without cookies');
+    facts.push(visits.join(' · '));
+  }
+  $('page-facts').replaceChildren(...facts.map((fact) => html('p', '', fact)));
+  $('page-facts').hidden = !facts.length;
 }
 
 function renderUpdated() {
@@ -1395,15 +1512,15 @@ async function load({ dim = false } = {}) {
     console.error(err);
     showBanner(
       stats
-        ? `Could not refresh. Showing the last data, from ${dayTimeFmt.format(loadedAt)}. Trying again every 30 seconds.`
-        : 'The stats could not be loaded. This page retries by itself every 30 seconds.',
+        ? `Could not refresh. Showing the last data, from ${dayTimeFmt.format(loadedAt)}. Trying again every minute.`
+        : 'The stats could not be loaded. This page retries by itself every minute.',
     );
   } finally {
     scoped.forEach((node) => node.classList.remove('stale'));
   }
 }
 
-function selectRange(next) {
+function selectRange(next, { dim = true } = {}) {
   range = next;
   try {
     localStorage.setItem('range', next);
@@ -1411,7 +1528,7 @@ function selectRange(next) {
   for (const button of document.querySelectorAll('.ranges button')) {
     button.setAttribute('aria-pressed', String(button.dataset.range === range));
   }
-  load({ dim: true });
+  load({ dim });
 }
 
 for (const button of document.querySelectorAll('.ranges button')) {
@@ -1427,46 +1544,112 @@ for (const toggle of document.querySelectorAll('[data-table]')) {
   });
 }
 
-/** Falling characters behind the header. Plain letters and digits, drawn on a canvas. */
+/**
+ * Falling code behind the header: mirrored katakana and digits, as in the films, drawn as real text so it
+ * stays sharp on any screen. A device with no Japanese font falls back to a picture of the game's own glyphs.
+ */
 function startRain() {
   const canvas = $('rain');
   const ctx = canvas.getContext('2d');
-  const glyphs = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ<>[]{}=+-*/|:;._';
-  const size = 14;
+  const CELL = 16;
+  const GLYPHS = 'ｦｱｳｴｵｶｷｹｺｻｼｽｾｿﾀﾂﾃﾅﾆﾇﾈﾊﾋﾎﾏﾐﾑﾒﾓﾔﾕﾗﾘﾜﾝ0123456789Z:.=*+-<>|';
+  const FONT = `bold ${CELL}px "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", Meiryo, "MS Gothic", "Noto Sans CJK JP", "Noto Sans JP", monospace`;
+  let strips = null; // the fallback picture, tinted green
   let drops = [];
   let w = 0;
   let h = 0;
+
+  /** True when this device can draw katakana. Without a font for it, every glyph comes out as the same box. */
+  const hasKana = () => {
+    const probe = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+    const look = (text) => {
+      probe.clearRect(0, 0, 24, 24);
+      probe.font = FONT;
+      probe.fillText(text, 2, 18);
+      return probe.getImageData(0, 0, 24, 24).data.join('');
+    };
+    return look('ﾊ') !== look('ﾘ') && look('ﾊ') !== look('\uffff');
+  };
+
   const resize = () => {
-    const scale = Math.min(2, window.devicePixelRatio || 1);
+    const scale = Math.min(3, window.devicePixelRatio || 1);
     w = canvas.clientWidth;
     h = canvas.clientHeight;
     canvas.width = w * scale;
     canvas.height = h * scale;
     ctx.setTransform(scale, 0, 0, scale, 0, 0);
-    drops = Array.from({ length: Math.ceil(w / size) }, () => Math.random() * -30);
+    drops = Array.from({ length: Math.ceil(w / CELL) }, () => ({ row: Math.random() * -30, strip: Math.floor(Math.random() * 8), start: Math.floor(Math.random() * 400) }));
+  };
+  /** One glyph, flipped left to right inside its cell. */
+  const glyph = (column, row, color) => {
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.translate((column + 1) * CELL, 0);
+    ctx.scale(-1, 1);
+    ctx.fillText(GLYPHS[Math.floor(Math.random() * GLYPHS.length)], CELL / 2, (row + 1) * CELL - 3);
+    ctx.restore();
   };
   const step = () => {
-    ctx.fillStyle = 'rgba(3, 6, 4, 0.16)';
+    ctx.fillStyle = fade(INK.page, 0.09);
     ctx.fillRect(0, 0, w, h);
-    ctx.font = `${size}px ui-monospace, Menlo, Consolas, monospace`;
-    drops.forEach((y, i) => {
-      ctx.fillStyle = Math.random() < 0.07 ? '#d4ffe5' : '#27c46b';
-      ctx.fillText(glyphs[Math.floor(Math.random() * glyphs.length)], i * size, y * size);
-      drops[i] = y * size > h && Math.random() > 0.96 ? 0 : y + 1;
+    ctx.font = FONT;
+    ctx.textAlign = 'center';
+    drops.forEach((drop, i) => {
+      const row = Math.floor(drop.row);
+      if (row >= 0 && strips) {
+        const tall = strips.height - CELL;
+        ctx.drawImage(strips, drop.strip * CELL, (drop.start + row * CELL) % tall, CELL, CELL, i * CELL, row * CELL, CELL, CELL);
+      } else if (row >= 0) {
+        // The glyph behind the newest one settles to green. The newest is nearly white.
+        if (row > 0) {
+          ctx.fillStyle = INK.page;
+          ctx.fillRect(i * CELL, (row - 1) * CELL, CELL, CELL);
+          glyph(i, row - 1, token('--rain'));
+        }
+        glyph(i, row, token('--rain-head'));
+      }
+      drop.row += 1;
+      if (drop.row * CELL > h && Math.random() > 0.96) Object.assign(drop, { row: 0, strip: Math.floor(Math.random() * 8), start: Math.floor(Math.random() * 400) });
     });
   };
-  resize();
-  window.addEventListener('resize', resize);
-  // With reduced motion, draw one still frame and stop.
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    for (let i = 0; i < 40; i++) step();
+  const run = () => {
+    resize();
+    window.addEventListener('resize', resize);
+    // With reduced motion, draw one still frame and stop.
+    if (stillPage) {
+      for (let i = 0; i < 40; i++) step();
+      return;
+    }
+    let timer = setInterval(step, 75);
+    document.addEventListener('visibilitychange', () => {
+      clearInterval(timer);
+      if (!document.hidden) timer = setInterval(step, 75);
+    });
+  };
+
+  if (hasKana()) {
+    run();
     return;
   }
-  let timer = setInterval(step, 75);
-  document.addEventListener('visibilitychange', () => {
-    clearInterval(timer);
-    if (!document.hidden) timer = setInterval(step, 75);
-  });
+  const picture = new Image();
+  picture.onload = () => {
+    // The picture stores brightness only. It is tinted once, with brightness as opacity.
+    strips = document.createElement('canvas');
+    strips.width = picture.width;
+    strips.height = picture.height;
+    const paint = strips.getContext('2d');
+    paint.drawImage(picture, 0, 0);
+    const pixels = paint.getImageData(0, 0, strips.width, strips.height);
+    for (let i = 0; i < pixels.data.length; i += 4) {
+      pixels.data[i + 3] = pixels.data[i];
+      pixels.data[i] = 70;
+      pixels.data[i + 1] = 255;
+      pixels.data[i + 2] = 130;
+    }
+    paint.putImageData(pixels, 0, 0);
+    run();
+  };
+  picture.src = '/assets/icons/code.png';
 }
 
 // The charts follow the width of the page.
@@ -1481,9 +1664,106 @@ new ResizeObserver(([entry]) => {
   renderHours();
   renderWeek();
 }).observe($('players-plot'));
-setInterval(() => document.hidden || load(), 30_000);
+// The numbers change once a minute, so that is how often they are fetched.
+setInterval(() => document.hidden || load(), 60_000);
 setInterval(renderUpdated, 1000);
 document.addEventListener('visibilitychange', () => document.hidden || load());
 startRain();
-if (!linked) showSaved();
-selectRange(range);
+{
+  const root = document.documentElement;
+  const button = $('theme-switch');
+  const show = (theme) => {
+    root.dataset.theme = theme;
+    button.textContent = theme === 'light' ? 'Dark mode' : 'Light mode';
+    paint();
+    // The falling code starts over on the new background.
+    const rain = $('rain');
+    rain.getContext('2d').clearRect(0, 0, rain.width, rain.height);
+    if (stats) renderAll();
+  };
+  button.textContent = root.dataset.theme === 'light' ? 'Dark mode' : 'Light mode';
+  button.addEventListener('click', () => {
+    const next = root.dataset.theme === 'light' ? 'dark' : 'light';
+    document.cookie = `theme=${next}; max-age=31536000; path=/; SameSite=Lax`;
+    show(next);
+  });
+  // Follow the device while no choice has been saved.
+  matchMedia('(prefers-color-scheme: light)').addEventListener('change', (event) => {
+    if (!/(?:^|; )theme=/.test(document.cookie)) show(event.matches ? 'light' : 'dark');
+  });
+}
+// Cryptos, by the title: the exile program who decides who gets in. Flood stands by the footer.
+$('brand-face').replaceWith(bust('cryptos', ''));
+// Tyndall, beside the story of the game's end and return. She watches the pointer.
+$('intro-face').replaceWith(bust('tyndall', '', { watches: true }));
+$('foot-figure').replaceWith(bust('flood', '', { whole: true }));
+// The line under the footer takes emotes for him, typed the way they are in the game.
+{
+  const SAID = {
+    wave: 'Flood waves.',
+    bow: 'Flood bows.',
+    nod: 'Flood nods.',
+    no: 'Flood shakes his head.',
+    shrug: 'Flood shrugs.',
+    point: 'Flood points.',
+    clap: 'Flood claps.',
+    cheer: 'Flood cheers.',
+    salute: 'Flood salutes.',
+    beckon: 'Flood beckons.',
+    laugh: 'Flood laughs.',
+    thumbsup: 'Flood gives a thumbs up.',
+    kneel: 'Flood kneels.',
+    crossarms: 'Flood crosses his arms.',
+    dance: 'Flood dances.',
+    turn: 'Flood turns around.',
+  };
+  const ALSO = { hello: 'wave', hi: 'wave', yes: 'nod', shake: 'no', shakehead: 'no', applaud: 'clap', pointf: 'point', thumbs: 'thumbsup', spin: 'turn', rotate: 'turn' };
+  const HELP = 'Click a command or type it. Drag Flood to turn him.';
+  const listed = [];
+  /** Does what a command says and gives the line to show for it. */
+  const answer = (word) => {
+    const emote = ALSO[word] ?? word;
+    if (word === 'help' || word === '?') {
+      // Asking for help lays out every command, ready to click.
+      for (const button of listed) button.hidden = false;
+      return HELP;
+    }
+    if (!Object.hasOwn(SAID, emote)) return `Unknown command /${word}. Try /help`;
+    return act('flood', emote) ? SAID[emote] : 'Flood is not here.';
+  };
+  $('say').addEventListener('submit', (event) => {
+    event.preventDefault();
+    const word = $('say-line').value.trim().toLowerCase().replace(/^\/+/, '').split(/\s+/)[0];
+    $('say-line').value = '';
+    if (word) $('say-reply').textContent = answer(word);
+  });
+  // Every command can also be clicked. Only /help shows until it is asked for.
+  for (const name of ['help', ...Object.keys(SAID)]) {
+    const button = html('button', 'pill', `/${name}`);
+    button.type = 'button';
+    button.addEventListener('click', () => ($('say-reply').textContent = answer(name)));
+    if (name !== 'help') {
+      button.hidden = true;
+      listed.push(button);
+    }
+    $('commands').append(button);
+  }
+  // Shown only once he is there to answer.
+  figureReady('flood').then((there) => {
+    $('console').hidden = !there;
+  });
+}
+// One call per page view, so visits can be counted. Automated browsers are left out.
+if (!navigator.webdriver) fetch('/api/hit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ from: document.referrer }), keepalive: true }).catch(() => {});
+// The page arrives with the current numbers in it. They are drawn at once, then the viewer's own range
+// and time zone are fetched. Without them, the numbers saved from the last visit fill in.
+let boot = null;
+try {
+  boot = JSON.parse($('boot').textContent);
+} catch {}
+if (boot?.servers) {
+  stats = boot;
+  loadedAt = boot.now;
+  renderAll();
+} else if (!linked) showSaved();
+selectRange(range, { dim: !boot?.servers });

@@ -1,6 +1,6 @@
 # MxO stats
 
-A fan-made page that shows how many people are playing on the fan-run Matrix Online servers: Rejacked, MxO Revived and MxOEmu.
+A fan-made page that shows how many people are playing on the Matrix Online community servers (private servers run by fans): Rejacked, MxO Revived and MxOEmu.
 
 Live at https://whoisjackedin.com
 
@@ -33,10 +33,10 @@ The Discord member counts come from each Discord's public invite link, once an h
 
 ## How it decides a server is down
 
-- One odd answer is not enough. The page shows the last known number and checks again.
-- Three failed checks in a row count as an outage.
+- One odd answer is not enough. The page shows the last known number and keeps checking.
+- A server counts as down after 15 bad answers in a row, which is about 15 minutes. A status feed can say "maintenance" for a few minutes while everyone is still jacked in, so shorter spells are not outages.
+- Until then the last real number is used. If the outage turns out to be real, those borrowed readings are taken back out of the day's totals.
 - An "asked too often" reply is ignored.
-- If a reading is missing, the last real one is used for up to five minutes.
 - If the page cannot refresh, it keeps showing the last data and says from when it is.
 
 ## How it runs
@@ -45,6 +45,7 @@ The site is on Vercel's free plan.
 
 - The page is `src/index.html` and `src/app.js`. The charts are drawn with Apache ECharts. `npm run build` packs both into `public/`, small and with no source maps.
 - Days are counted in the visitor's own time zone, to the nearest hour.
+- The page arrives with the current numbers already in it: `api/page` fills them into the built page and the result is cached for a minute. Search engines and link previews get them too. The browser then keeps them fresh, once a minute.
 - `api/stats` gives the page its numbers.
 - `api/collect` takes one reading of all three servers.
 - Readings are saved in an Upstash Redis database on its free plan.
@@ -73,6 +74,27 @@ Run `npm install` once before the first start. Then open http://127.0.0.1:5177. 
 | `HOST` | `127.0.0.1` | Set to `0.0.0.0` to open it to your network |
 | `MXO_DATA_DIR` | `./data/kv` | Where the readings are saved |
 
+## Staying on the free plans
+
+Checked on 17 November 2026.
+
+- Upstash's free plan holds 250 MB and allows 500,000 commands a month. The history that is kept for good grows by about half a megabyte a year, so storage is not the limit. Taking a reading every minute uses about 175,000 commands a month.
+- Vercel's Hobby plan allows 1,000,000 requests and 1,000,000 function runs a month. The every-minute reading uses about 43,000 of each.
+- The rest is visitors. The numbers only change once a minute, so the page asks for them once a minute and the answers are cached for a minute. Do not make either shorter without doing the sums again.
+- The "All" view reaches back one year. Older hourly totals are still stored. Extend the view before November 2027.
+
+## Visits
+
+The page tells the site once when it opens. The site saves one short line for that visit: the time, the country, phone or desktop, the site the visitor came from, and a short fingerprint that changes every day. No tracking cookies are set and no addresses are kept. The only cookie is `theme`, which remembers a visitor's choice of dark or light. Lines are kept for 90 days.
+
+Once an hour the last 30 days are added up, and the foot of the page shows the totals: visits, how many countries they came from, and the share made on phones.
+
+```sh
+npm run visitors
+```
+
+prints the numbers. It needs `CRON_SECRET` in `.env.local`.
+
 ## What is saved
 
 - Every reading, kept for 9 days. This feeds the 1 hour, 24 hour and 7 day views. After that only the hourly totals remain.
@@ -84,10 +106,14 @@ Run `npm install` once before the first start. Then open http://127.0.0.1:5177. 
 - `lib/sources.js`: the three servers, how to read each one, and their descriptions
 - `lib/store.js`: saving and loading, in Redis on Vercel and in files on your computer
 - `lib/core.js`: taking readings and working out the numbers
-- `api/`: the two addresses the site answers on
+- `lib/visits.js`: counting visits
+- `lib/page.js`: puts the current numbers into the page before it is sent
+- `api/`: the addresses the site answers on
+- `scripts/visitors.mjs`: prints the visit numbers
 - `src/`: the page and its script
 - `build.mjs`: packs the page into `public/`
-- `src/icons/`: ten small icons from the game client, used on the headings. They belong to the game's owners
+- `src/icons/`: icons and the falling code picture, taken from the game client. They belong to the game's owners
+- `tools/models/`: turns characters and animations from a game install into those files. Run `sh tools/models/make.sh "<game folder>"`
 - `server.js`: runs the site on your own computer
 
 ## Server descriptions

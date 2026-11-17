@@ -13,29 +13,53 @@ const PUBLIC = path.join(ROOT, 'public');
 process.env.MXO_DATA_DIR ??= path.join(ROOT, 'data', 'kv');
 
 const { SAMPLE_MS, buildStats, collect } = await import('./lib/core.js');
+const { renderPage } = await import('./lib/page.js');
 
 // The same security headers as on Vercel, so a page that works here works there.
 const config = JSON.parse(await readFile(path.join(ROOT, 'vercel.json'), 'utf8'));
 const SHARED_HEADERS = Object.fromEntries(config.headers[0].headers.map(({ key, value }) => [key.toLowerCase(), value]));
 const PAGE_HEADERS = { ...SHARED_HEADERS, 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' };
-const ASSET_TYPES = { '.js': 'text/javascript; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.png': 'image/png' };
+// robots.txt and sitemap.xml sit beside the page.
+const ROOT_FILES = { '/robots.txt': 'text/plain; charset=utf-8', '/sitemap.xml': 'application/xml; charset=utf-8' };
+const ASSET_TYPES = { '.js': 'text/javascript; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.bin': 'application/octet-stream' };
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
+  // Visits are only counted on the real site. Here the call is answered and dropped.
+  if (req.method === 'POST' && url.pathname === '/api/hit') {
+    res.writeHead(204).end();
+    return;
+  }
   if (req.method !== 'GET') {
     res.writeHead(405, { allow: 'GET' }).end();
     return;
   }
   if (url.pathname === '/') {
     try {
-      res.writeHead(200, PAGE_HEADERS).end(await readFile(path.join(PUBLIC, 'index.html')));
+      const page = await readFile(path.join(PUBLIC, 'page.html'), 'utf8');
+      // As on the site: the page is sent with the current numbers already in it.
+      let body = page;
+      try {
+        body = renderPage(page, await buildStats('24h', 0));
+      } catch (err) {
+        console.warn(err.message);
+      }
+      res.writeHead(200, PAGE_HEADERS).end(body);
     } catch {
-      res.writeHead(500, { 'content-type': 'text/plain' }).end('public/index.html is missing. Run "npm run build" first.');
+      res.writeHead(500, { 'content-type': 'text/plain' }).end('public/page.html is missing. Run "npm run build" first.');
+    }
+    return;
+  }
+  if (ROOT_FILES[url.pathname]) {
+    try {
+      res.writeHead(200, { ...SHARED_HEADERS, 'content-type': ROOT_FILES[url.pathname] }).end(await readFile(path.join(PUBLIC, url.pathname)));
+    } catch {
+      res.writeHead(404).end();
     }
     return;
   }
   // Only plain file names inside public/assets are served.
-  const asset = /^\/assets\/((?:icons\/)?[\w.-]+)$/.exec(url.pathname)?.[1];
+  const asset = /^\/assets\/((?:icons\/|models\/)?[\w.-]+)$/.exec(url.pathname)?.[1];
   if (asset && ASSET_TYPES[path.extname(asset)]) {
     try {
       const body = await readFile(path.join(PUBLIC, 'assets', asset));

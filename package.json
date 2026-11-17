@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "node build.mjs && node server.js",
-    "build": "node build.mjs"
+    "build": "node build.mjs",
+    "visitors": "node scripts/visitors.mjs"
   },
   "engines": {
     "node": "26.x"
