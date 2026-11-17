@@ -5,13 +5,14 @@
   "description": "Unofficial stats page for the community-run Matrix Online servers",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
+    "start": "node build.mjs && node server.js",
     "build": "node build.mjs"
   },
   "engines": {
     "node": "26.x"
   },
   "devDependencies": {
+    "echarts": "^6.1.0",
     "esbuild": "^0.28.2"
   }
 }

@@ -27,6 +27,8 @@
     --good: #0ca30c;
     --warning: #fab219;
     --critical: #d03b3b;
+    --up: #35d06a;
+    --down: #ff6b6b;
     --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
   }
@@ -56,8 +58,10 @@
   .note { color: var(--muted); font-size: 12.5px; }
   .head-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 
-  h2 { margin: 34px 0 12px; font-size: 12.5px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent-dim); display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
-  h2::before { content: '//'; color: var(--muted); }
+  h2 { margin: 34px 0 12px; font-size: 12.5px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent-dim); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+  /* Icons from the game, 32 pixels square. Shown at whole multiples so the pixels stay sharp. */
+  .glyph { flex: none; width: 32px; height: 32px; border-radius: 4px; image-rendering: pixelated; box-shadow: 0 0 0 1px var(--border), 0 0 12px rgba(61, 255, 143, 0.16); }
+  .glyph.big { width: 64px; height: 64px; border-radius: 6px; align-self: center; justify-self: center; }
   h2 .note { text-transform: none; letter-spacing: 0; font-weight: 400; }
   .eyebrow { font-size: 11.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-2); }
 
@@ -74,8 +78,12 @@
 
   .key { display: inline-block; flex: none; width: 12px; height: 3px; border-radius: 2px; vertical-align: middle; }
 
-  .hero { margin-top: 22px; display: grid; grid-template-columns: minmax(220px, 1fr) 2fr; gap: 16px 40px; align-items: center; }
-  .hero-value { font-size: 76px; font-weight: 600; line-height: 1; margin: 6px 0 8px; color: var(--accent); text-shadow: 0 0 22px rgba(61, 255, 143, 0.5); }
+  .hero { margin-top: 22px; padding-top: 22px; }
+  .hero-stats { display: grid; grid-template-columns: auto repeat(3, 1fr); gap: 18px 24px; align-items: end; text-align: center; }
+  .hero-value { font-size: 76px; font-weight: 600; line-height: 1; color: var(--accent); text-shadow: 0 0 22px rgba(61, 255, 143, 0.5); }
+  .stat-value { font-size: 50px; font-weight: 600; line-height: 1; color: var(--ink); }
+  .stat-label { margin-top: 10px; font-size: 12.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+  .hero-share { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--grid); }
   .share { display: flex; gap: 2px; height: 8px; margin: 12px 0 10px; border-radius: 4px; overflow: hidden; background: var(--grid); }
   .share span { display: block; height: 100%; }
   .share-legend { display: flex; flex-wrap: wrap; gap: 4px 18px; color: var(--ink-2); }
@@ -110,17 +118,18 @@
   .chart-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
   .legend button { display: inline-flex; align-items: center; gap: 7px; font: inherit; color: var(--ink-2); background: none; border: 0; padding: 0; cursor: pointer; }
   .legend button[aria-pressed="false"] { opacity: 0.4; text-decoration: line-through; }
-  .zoom-box { position: absolute; top: 12px; height: 230px; pointer-events: none; background: rgba(61, 255, 143, 0.12); border-left: 1px solid var(--accent); border-right: 1px solid var(--accent); }
-  #players-chart { cursor: crosshair; }
-  #players-nav { display: block; width: 100%; margin-top: 6px; cursor: grab; touch-action: none; }
+  .legend button strong { min-width: 2.5ch; text-align: left; font-size: 15px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .readout { margin: 2px 0 8px; }
+  .zoom-box { position: absolute; pointer-events: none; background: rgba(61, 255, 143, 0.12); border-left: 1px solid var(--accent); border-right: 1px solid var(--accent); }
+  .echart { width: 100%; height: 200px; outline: none; }
+  .echart:focus-visible { outline: 1px solid var(--accent); outline-offset: 4px; }
+  #players-chart { height: 360px; }
+  .mini .echart { height: 132px; }
+  #week { height: 232px; margin-top: 8px; }
   #zoom-hint { margin-top: 6px; }
   .peaks { display: flex; flex-wrap: wrap; gap: 2px 18px; margin-bottom: 6px; color: var(--ink-2); font-size: 12.5px; }
   .peaks strong { color: var(--ink); font-size: 15px; font-weight: 600; }
   .table-wrap.open { max-height: 300px; margin-top: 8px; }
-  .week { display: grid; grid-template-columns: 34px repeat(24, 1fr); gap: 2px; align-items: center; margin-top: 10px; }
-  .week i { display: block; height: 20px; border-radius: 2px; background: var(--grid); }
-  .week-hour { font-size: 10.5px; color: var(--muted); white-space: nowrap; }
-  .week-day { font-size: 11.5px; color: var(--ink-2); }
   .week-key { display: inline-flex; align-items: center; gap: 4px; }
   .week-key i { width: 12px; height: 12px; border-radius: 2px; background: var(--c, var(--accent)); }
   .scoped { transition: opacity 120ms; }
@@ -132,19 +141,12 @@
   .legend { display: flex; flex-wrap: wrap; gap: 4px 18px; color: var(--ink-2); }
   .legend span { display: inline-flex; align-items: center; gap: 7px; }
   .plot { position: relative; }
-  .plot svg { display: block; width: 100%; overflow: visible; outline: none; }
-  .plot svg:focus-visible { outline: 1px solid var(--accent); outline-offset: 4px; }
-  .plot text { font: 11px var(--mono); fill: var(--muted); }
-  .empty { position: absolute; inset: 0 0 28px 36px; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--ink-2); padding: 0 16px; }
-  .tooltip {
-    position: absolute; top: 4px; pointer-events: none; white-space: nowrap; z-index: 2;
-    background: #0d1c13; border: 1px solid rgba(72, 255, 150, 0.35); border-radius: 4px;
-    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.6); padding: 8px 10px; font-size: 12.5px;
-  }
-  .tip-row { display: flex; align-items: center; gap: 7px; }
-  .tip-row strong { font-weight: 600; }
-  .tip-row .name, .tooltip .when { color: var(--ink-2); }
-  .tooltip .when { margin-top: 3px; }
+  .empty { position: absolute; inset: 14px 16px 84px 40px; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--ink-2); padding: 0 16px; pointer-events: none; }
+  .tip-when { margin-bottom: 4px; color: var(--ink-2); }
+  .tip-row { display: grid; grid-template-columns: 12px 1fr auto; align-items: center; gap: 8px; }
+  .tip-row .name { color: var(--ink-2); }
+  .tip-row strong { font-weight: 600; text-align: right; padding-left: 10px; }
+  .tip-row.sum { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--axis); }
   .mini + .mini { margin-top: 16px; }
   .mini-head { display: flex; align-items: center; gap: 8px; color: var(--ink-2); }
 
@@ -154,6 +156,17 @@
   th:first-child, td:first-child { text-align: left; padding-left: 0; }
   thead th { position: sticky; top: 0; background: #0a140e; color: var(--muted); font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase; }
   tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
+  .breakdown { min-width: 620px; }
+  .breakdown th, .breakdown td { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .breakdown tr.pinned td { font-weight: 600; background: rgba(61, 255, 143, 0.05); }
+  .breakdown tr.pinned td:first-child { padding-left: 8px; box-shadow: inset 2px 0 0 var(--accent-dim); }
+  .sort { font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+  .sort:hover, th[aria-sort] .sort { color: var(--ink); }
+  .sort:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .sort-mark { color: var(--accent); }
+  .up { color: var(--up); }
+  .down { color: var(--down); }
+  .table-wrap:focus-visible { outline: 1px solid var(--accent); outline-offset: 4px; }
   .facts th[scope="row"] { font-size: 14px; font-weight: 600; white-space: nowrap; }
   .facts th[scope="row"] .key { margin-right: 9px; }
   .facts td { font-size: 15px; }
@@ -238,13 +251,15 @@
   @media (max-width: 700px) {
     h1 { font-size: 21px; }
     .head-right { align-items: flex-start; }
-    .hero { grid-template-columns: 1fr; }
+    .hero-stats { grid-template-columns: 1fr 1fr; align-items: start; }
+    .hero-stats .stat:nth-child(2) { grid-column: 1 / -1; }
+    .hero-stats .glyph { display: none; }
     .hero-value { font-size: 64px; }
+    .stat-value { font-size: 38px; }
+    #players-chart { height: 320px; }
     .card { padding: 14px 16px; }
     .ranges button { padding: 4px 9px; }
     .strip { gap: 1px; }
-    .week { grid-template-columns: 30px repeat(24, 1fr); gap: 1px; }
-    .week i { height: 16px; }
   }
 </style>
 </head>
@@ -270,13 +285,26 @@
 
   <div class="card banner" id="banner" role="alert" hidden></div>
 
-  <section class="card hero" aria-label="Right now">
-    <div>
-      <div class="eyebrow">Operatives jacked in right now</div>
-      <div class="hero-value" id="total-now">–</div>
-      <div class="note" id="total-note">&nbsp;</div>
+  <section class="card hero" aria-label="Right now, all servers together">
+    <div class="hero-stats">
+      <img class="glyph big" src="/assets/icons/disc_operative.png" alt="" width="64" height="64">
+      <div class="stat">
+        <div class="hero-value" id="total-now">–</div>
+        <div class="stat-label">operatives jacked in right now</div>
+        <div class="note" id="total-note">&nbsp;</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="total-peak24">–</div>
+        <div class="stat-label">24-hour peak</div>
+        <div class="note">all servers</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="total-record">–</div>
+        <div class="stat-label">all-time peak</div>
+        <div class="note" id="total-record-when">&nbsp;</div>
+      </div>
     </div>
-    <div>
+    <div class="hero-share">
       <div class="eyebrow">Where they are</div>
       <div class="share" id="share" role="img" aria-label="Share of operatives per server"></div>
       <div class="share-legend" id="share-legend"></div>
@@ -288,19 +316,19 @@
   <div class="card banner" id="history-off" hidden>History is off because this page has no storage connected yet. The numbers above are live.</div>
 
   <div id="recorded">
-    <h2>Ranking <span class="note" id="rank-sub"></span></h2>
+    <h2><img class="glyph" src="/assets/icons/disc_upgrade_master.png" alt="" width="32" height="32">Ranking <span class="note" id="rank-sub"></span></h2>
     <div class="scoped rank-grid">
       <section class="card">
         <div class="eyebrow">Most operatives</div>
         <ol class="rank" id="rank-players"></ol>
       </section>
       <section class="card">
-        <div class="eyebrow">Most time online</div>
+        <div class="eyebrow">Best uptime</div>
         <ol class="rank" id="rank-uptime"></ol>
       </section>
     </div>
 
-    <h2>Operatives jacked in <span class="note" id="players-sub"></span></h2>
+    <h2><img class="glyph" src="/assets/icons/disc_network_hacker.png" alt="" width="32" height="32">Operatives jacked in <span class="note" id="players-sub"></span></h2>
     <div class="scoped" id="scoped">
       <section class="card">
         <div class="chart-head">
@@ -314,14 +342,13 @@
             <button type="button" class="link-button" data-table="players-table" aria-expanded="false" aria-controls="players-table">Show as table</button>
           </div>
         </div>
+        <div class="note readout" id="players-readout" aria-live="off">&nbsp;</div>
         <div class="plot" id="players-plot">
-          <svg id="players-chart" height="270" tabindex="0" role="img" aria-label="Operatives jacked in over time for each server. Use the left and right arrow keys to read values."></svg>
+          <div class="echart" id="players-chart" tabindex="0" role="img" aria-label="Operatives jacked in over time for each server. Use the left and right arrow keys to read values."></div>
           <div class="empty" id="players-empty" hidden>Collecting data. The chart fills in minute by minute.</div>
-          <div class="tooltip" id="players-tip" hidden><div class="tip-rows"></div><div class="when"></div></div>
           <div class="zoom-box" id="zoom-box" hidden></div>
         </div>
-        <svg id="players-nav" height="46" role="img" aria-label="Overview of the whole loaded period. Drag the window to move through time."></svg>
-        <div class="note" id="zoom-hint">Drag across the chart to zoom in. Drag the strip below it to move through time. Click a name to hide or show a server.</div>
+        <div class="note" id="zoom-hint">Point at the chart to read the numbers next to the names. Drag across it to zoom in for more detail, double-click to zoom back out. Click a name to hide or show a server.</div>
         <div class="table-wrap" id="players-table" hidden>
           <table>
             <thead><tr id="players-head"></tr></thead>
@@ -332,36 +359,33 @@
 
       <section class="card" aria-label="Summary for the selected range">
         <table class="facts">
-          <thead><tr><th scope="col">Server</th><th scope="col">Most at once</th><th scope="col">Average</th><th scope="col">Time online</th></tr></thead>
+          <thead><tr><th scope="col">Server</th><th scope="col">Most at once</th><th scope="col">Average</th><th scope="col">Uptime</th></tr></thead>
           <tbody id="summary-rows"></tbody>
         </table>
       </section>
     </div>
 
-    <h2>Day by day <span class="note">most operatives seen at once on each day (UTC days)</span></h2>
+    <h2><img class="glyph" src="/assets/icons/disc_upgrade_artist.png" alt="" width="32" height="32">Day by day <span class="note">most operatives seen at once on each day, in your time zone</span></h2>
     <section class="card">
-      <div class="plot" id="daily-plot">
-        <svg id="daily-chart" height="190" tabindex="0" role="img" aria-label="Most operatives per day for each server. Use the left and right arrow keys to read values."></svg>
-        <div class="tooltip" id="daily-tip" hidden><div class="tip-rows"></div><div class="when"></div></div>
-      </div>
+      <div class="echart" id="daily-chart" tabindex="0" role="img" aria-label="Most operatives per day for each server. Use the left and right arrow keys to read values."></div>
     </section>
 
-    <h2>Time online <span class="note">one square per day, last 90 days</span></h2>
+    <h2><img class="glyph" src="/assets/icons/signal_booster.png" alt="" width="32" height="32">Uptime <span class="note">one square per day, last 90 days, in your time zone</span></h2>
     <section class="card">
       <div id="uptime"></div>
       <div class="strip-foot note">
         <span>90 days ago</span>
         <span class="strip-key">
-          <span><i style="background: var(--good)"></i>online all day</span>
-          <span><i style="background: var(--warning)"></i>some downtime</span>
-          <span><i style="background: var(--critical)"></i>long downtime</span>
+          <span><i style="background: var(--good)"></i>operational</span>
+          <span><i style="background: var(--warning)"></i>partial outage</span>
+          <span><i style="background: var(--critical)"></i>major outage</span>
           <span><i></i>no data</span>
         </span>
         <span>today</span>
       </div>
     </section>
 
-    <h2>Busiest hours <span class="note">average operatives at each hour, in your time zone</span></h2>
+    <h2><img class="glyph" src="/assets/icons/disc_awakened.png" alt="" width="32" height="32">Busiest hours <span class="note">average operatives at each hour, in your time zone</span></h2>
     <section class="card">
       <div class="chart-head">
         <div class="note" id="hours-note">&nbsp;</div>
@@ -376,26 +400,32 @@
       </div>
     </section>
 
-    <h2>One server at a time <span class="modes" id="server-picker" role="group" aria-label="Server for the day table and the weekly pattern"></span></h2>
+    <h2><img class="glyph" src="/assets/icons/disc_spy.png" alt="" width="32" height="32">One server at a time <span class="modes" id="server-picker" role="group" aria-label="Server for the breakdown table and the weekly pattern"></span></h2>
     <section class="card">
-      <div class="eyebrow">Day table</div>
-      <div class="table-wrap open">
-        <table>
-          <thead><tr><th scope="col">Day</th><th scope="col">Most at once</th><th scope="col">Average</th><th scope="col">Change</th><th scope="col">Time online</th></tr></thead>
+      <div class="chart-head">
+        <div class="eyebrow">Breakdown <span class="note" id="breakdown-sub"></span></div>
+        <div class="modes" role="group" aria-label="Rows of the table">
+          <button type="button" data-rows="day">By day</button>
+          <button type="button" data-rows="month">By month</button>
+        </div>
+      </div>
+      <div class="table-wrap open" tabindex="0" role="region" aria-label="Breakdown table">
+        <table class="breakdown">
+          <thead><tr id="breakdown-head"></tr></thead>
           <tbody id="breakdown-rows"></tbody>
         </table>
       </div>
     </section>
     <section class="card">
       <div class="eyebrow">Weekly pattern <span class="note" id="week-sub"></span></div>
-      <div class="week" id="week"></div>
+      <div class="echart" id="week" role="img"></div>
       <div class="strip-foot note">
         <span id="week-note"></span>
         <span class="week-key" id="week-key">fewer <i style="opacity: 0.2"></i><i style="opacity: 0.45"></i><i style="opacity: 0.7"></i><i style="opacity: 1"></i> more</span>
       </div>
     </section>
 
-    <h2>Records <span class="note" id="alltime-scope"></span></h2>
+    <h2><img class="glyph" src="/assets/icons/disc_data_miner.png" alt="" width="32" height="32">Records <span class="note" id="alltime-scope"></span></h2>
     <section class="card">
       <table class="facts">
         <thead><tr><th scope="col">Server</th><th scope="col">Most operatives ever</th><th scope="col">Last operative seen</th></tr></thead>
@@ -403,13 +433,13 @@
       </table>
     </section>
 
-    <h2>Outages <span class="note">counted after three failed checks in a row</span></h2>
+    <h2><img class="glyph" src="/assets/icons/impaired_connection.png" alt="" width="32" height="32">Outages <span class="note">counted after three failed checks in a row</span></h2>
     <section class="card">
       <ul class="rows" id="outages"><li class="note">Nothing loaded yet.</li></ul>
     </section>
   </div>
 
-  <h2>The servers <span class="note">from each team's own posts, November 2026</span></h2>
+  <h2><img class="glyph" src="/assets/icons/disc_hacker.png" alt="" width="32" height="32">The servers <span class="note">from each team's own posts, November 2026</span></h2>
   <section class="card" id="glance-card" hidden>
     <div class="scroll-x" tabindex="0" role="region" aria-label="Server comparison">
       <table class="facts glance">
@@ -423,1323 +453,6 @@
   <footer id="footer"></footer>
 </main>
 
-<script>
-const SVG_NS = 'http://www.w3.org/2000/svg';
-const RANGE_LABEL = { '1h': 'last hour', '24h': 'last 24 hours', '7d': 'last 7 days', '30d': 'last 30 days', all: 'whole record' };
-// Color follows the server, whatever order the list comes in.
-const SERIES = { rejacked: 'var(--s1)', revived: 'var(--s2)', mxoemu: 'var(--s3)' };
-const $ = (id) => document.getElementById(id);
-const colorOf = (id) => SERIES[id] ?? 'var(--muted)';
-const DAY = 86400e3;
-
-const timeFmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
-const hourFmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric' });
-const weekdayFmt = new Intl.DateTimeFormat(undefined, { weekday: 'short' });
-const monthDayFmt = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' });
-const utcDayFmt = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' });
-const dayTimeFmt = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
-const monthYearFmt = new Intl.DateTimeFormat(undefined, { month: 'short', year: 'numeric', timeZone: 'UTC' });
-const dayLabel = (date) => `${weekdayFmt.format(date)} ${date.getDate()}`;
-const hourLabel = (hour) => hourFmt.format(new Date(2024, 0, 1, hour % 24));
-
-let range = '24h';
-try {
-  const saved = localStorage.getItem('range');
-  if (saved in RANGE_LABEL) range = saved;
-} catch {}
-// A link like /?range=7d opens that range directly.
-const linked = new URLSearchParams(location.search).get('range');
-if (linked in RANGE_LABEL) range = linked;
-
-let stats = null;
-let loadedAt = null;
-let zoom = null; // { from, to } inside the loaded period, or null for all of it
-let stacked = false;
-let picked = null; // the server shown in the day table and the weekly pattern
-const hiddenServers = new Set(); // switched off in the legend
-
-const players = (n) => `${n} ${n === 1 ? 'operative' : 'operatives'}`;
-const percent = (share) => {
-  const pct = share * 100;
-  return `${pct === 100 || pct === 0 ? pct : pct.toFixed(1)}%`;
-};
-
-function duration(ms) {
-  const minutes = ms / 60000;
-  if (minutes < 90) return `${Math.max(1, Math.round(minutes))} min`;
-  if (minutes < 48 * 60) return `${(minutes / 60).toFixed(1)} h`;
-  return `${(minutes / 1440).toFixed(1)} days`;
-}
-
-function el(tag, attrs, parent) {
-  const node = document.createElementNS(SVG_NS, tag);
-  for (const [name, value] of Object.entries(attrs)) node.setAttribute(name, value);
-  if (parent) parent.appendChild(node);
-  return node;
-}
-
-function html(tag, className, text) {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
-}
-
-function key(id) {
-  const node = html('span', 'key');
-  node.style.background = colorOf(id);
-  return node;
-}
-
-function link(label, url) {
-  const node = html('a', '', label);
-  node.href = url;
-  node.target = '_blank';
-  node.rel = 'noopener noreferrer';
-  return node;
-}
-
-function stateIcon(kind) {
-  const color = { good: 'var(--good)', critical: 'var(--critical)', unknown: 'var(--muted)' }[kind];
-  const shape = { good: 'M4.5 8.2l2.3 2.3 4.7-5', critical: 'M5.2 5.2l5.6 5.6M10.8 5.2l-5.6 5.6', unknown: 'M4.8 8h6.4' }[kind];
-  const icon = el('svg', { width: 16, height: 16, viewBox: '0 0 16 16', 'aria-hidden': 'true' });
-  el('circle', { cx: 8, cy: 8, r: 8, fill: color }, icon);
-  el('path', { d: shape, fill: 'none', stroke: '#fff', 'stroke-width': 1.8, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, icon);
-  return icon;
-}
-
-function niceStep(raw, wholeNumbers) {
-  const power = 10 ** Math.floor(Math.log10(raw));
-  const scaled = raw / power;
-  const step = (scaled <= 1 ? 1 : scaled <= 2 ? 2 : scaled <= 5 ? 5 : 10) * power;
-  return wholeNumbers ? Math.max(1, step) : step;
-}
-
-/** Shared hover, focus and arrow-key reading. Each span is { x0, x1, rows: [{ id, value, name }], when }. */
-function hoverable(chart, plot, tip) {
-  const state = { index: null, spans: [], width: 1, mark: () => {}, unmark: () => {} };
-
-  const hide = () => {
-    state.index = null;
-    state.unmark();
-    tip.hidden = true;
-  };
-  const show = (index) => {
-    if (!state.spans.length || index < 0) return hide();
-    state.index = Math.min(index, state.spans.length - 1);
-    const span = state.spans[state.index];
-    state.mark(span, state.index);
-    tip.querySelector('.tip-rows').replaceChildren(
-      ...span.rows.map((row) => {
-        const line = html('div', 'tip-row');
-        line.append(key(row.id), html('strong', '', row.value));
-        if (row.name) line.append(html('span', 'name', row.name));
-        return line;
-      }),
-    );
-    tip.querySelector('.when').textContent = span.when;
-    tip.hidden = false;
-    // Convert from viewBox units to the rendered size before placing the tooltip.
-    const x = ((span.x0 + span.x1) / 2) * (chart.getBoundingClientRect().width / state.width);
-    const left = x + 12;
-    tip.style.left = `${left + tip.offsetWidth > plot.clientWidth ? Math.max(0, x - 12 - tip.offsetWidth) : left}px`;
-  };
-  const nearest = (clientX) => {
-    const box = chart.getBoundingClientRect();
-    const x = ((clientX - box.left) / box.width) * state.width;
-    let best = -1;
-    let bestDistance = Infinity;
-    state.spans.forEach((span, i) => {
-      const distance = x < span.x0 ? span.x0 - x : x > span.x1 ? x - span.x1 : 0;
-      if (distance < bestDistance) {
-        best = i;
-        bestDistance = distance;
-      }
-    });
-    return best;
-  };
-
-  chart.addEventListener('pointermove', (event) => show(nearest(event.clientX)));
-  chart.addEventListener('pointerleave', hide);
-  chart.addEventListener('focus', () => state.index === null && show(state.spans.length - 1));
-  chart.addEventListener('blur', hide);
-  chart.addEventListener('keydown', (event) => {
-    const move = { ArrowLeft: -1, ArrowRight: 1 }[event.key];
-    if (!move || !state.spans.length) return;
-    event.preventDefault();
-    show(Math.max(0, (state.index ?? state.spans.length - 1) + move));
-  });
-
-  /** Called after each redraw so an open tooltip follows the new geometry. */
-  const update = (next) => {
-    Object.assign(state, next);
-    if (state.index !== null) show(state.index);
-  };
-  return { update, hide };
-}
-
-const playersHover = hoverable($('players-chart'), $('players-plot'), $('players-tip'));
-
-/** What the status light and its label say for one server's latest answer. */
-function statusOf(now) {
-  if (!now || now.players === undefined) return { led: 'unknown', text: 'NO SIGNAL', counted: false };
-  if (now.unsure) return { led: 'unsure', text: 'TRACING', counted: now.online };
-  if (!now.ok) return { led: 'unknown', text: 'NO SIGNAL', counted: false };
-  return now.online ? { led: 'good', text: 'ONLINE', counted: true } : { led: 'critical', text: 'OFFLINE', counted: false };
-}
-
-/** A small line of one server's player count over the selected range. */
-function sparkline(server, column) {
-  const svg = el('svg', { class: 'spark', viewBox: '0 0 190 44', preserveAspectRatio: 'none', 'aria-hidden': 'true' });
-  const { from, to, bucketMs, points } = stats.history;
-  const values = points.map((row) => row[column + 1]);
-  const top = Math.max(1, ...values.map((v) => v ?? 0));
-  const X = (t) => Math.round(((t - from) / (to - from)) * 1880) / 10 + 1;
-  const Y = (v) => Math.round((40 - (v / top) * 34) * 10) / 10;
-  let line = '';
-  let area = '';
-  let open = false;
-  let lastX = 0;
-  points.forEach((row, i) => {
-    const v = values[i];
-    const x0 = X(Math.max(row[0], from));
-    const x1 = X(Math.min(row[0] + bucketMs, to));
-    if (v === null || x1 <= x0) {
-      if (open) area += `V42Z`;
-      open = false;
-      return;
-    }
-    line += open ? `V${Y(v)}H${x1}` : `M${x0},${Y(v)}H${x1}`;
-    area += open ? `V${Y(v)}H${x1}` : `M${x0},42V${Y(v)}H${x1}`;
-    open = true;
-    lastX = x1;
-  });
-  if (open) area += 'V42Z';
-  if (area) el('path', { d: area, fill: colorOf(server.id), 'fill-opacity': 0.12 }, svg);
-  if (line) el('path', { d: line, fill: 'none', stroke: colorOf(server.id), 'stroke-width': 1.5, 'vector-effect': 'non-scaling-stroke', 'stroke-linejoin': 'round' }, svg);
-  return svg;
-}
-
-function serverCard(server, column) {
-  const card = html('div', 'card server');
-  card.style.setProperty('--c', colorOf(server.id));
-  const now = server.now;
-  const status = statusOf(now);
-
-  const head = html('div', 'server-head');
-  const badge = html('span', 'status');
-  badge.append(html('span', `led ${status.led}`), status.text);
-  head.append(link(server.name, server.site), badge);
-
-  const body = html('div', 'server-body');
-  const count = html('div');
-  const known = now && now.players !== undefined;
-  count.append(html('div', 'tile-value', known ? String(now.players) : '–'));
-  const live = status.led === 'good' || status.led === 'critical';
-  count.append(html('div', 'unit', !known ? 'no signal yet' : live ? `${now.players === 1 ? 'operative' : 'operatives'} jacked in` : 'last known count'));
-  body.append(count);
-  if (stats.storage && stats.history.points.length > 1) body.append(sparkline(server, column));
-
-  const lines = [];
-  if (now?.unsure) lines.push('Got an odd answer. Checking again.');
-  else if (now && !now.ok && known) lines.push(`No answer since ${timeFmt.format(now.failedAt)}`);
-  else if (known) {
-    const parts = (now.details ?? []).map((detail) => `${detail.label}: ${detail.value}`);
-    parts.push(`checked ${timeFmt.format(now.checkedAt ? new Date(now.checkedAt) : now.at)}`);
-    lines.push(parts.join(' · '));
-  }
-  const peaks = html('div', 'peaks');
-  for (const [value, label] of [[server.allTime?.peak24, '24-hour peak'], [server.allTime?.recordPeak, 'all-time peak']]) {
-    if (value === null || value === undefined) continue;
-    const item = html('span');
-    item.append(html('strong', '', String(value)), ` ${label}`);
-    peaks.append(item);
-  }
-  card.append(head, body, peaks, ...lines.map((line) => html('div', 'note', line)));
-  return card;
-}
-
-function renderNow() {
-  const counted = stats.servers.filter((server) => statusOf(server.now).counted);
-  const silent = stats.servers.filter((server) => statusOf(server.now).text === 'NO SIGNAL').length;
-  const total = counted.reduce((sum, server) => sum + server.now.players, 0);
-  $('total-now').textContent = counted.length || !silent ? total : '–';
-  $('total-note').textContent =
-    `${counted.length} of ${stats.servers.length} servers online` + (silent ? `, ${silent} with no signal` : '');
-
-  $('share').replaceChildren(
-    ...counted
-      .filter((server) => server.now.players > 0)
-      .map((server) => {
-        const part = html('span');
-        part.style.background = colorOf(server.id);
-        part.style.width = `${(server.now.players / total) * 100}%`;
-        return part;
-      }),
-  );
-  $('share').setAttribute('aria-label', total ? counted.map((s) => `${s.name} ${players(s.now.players)}`).join(', ') : 'Nobody jacked in right now');
-  $('share-legend').replaceChildren(
-    ...stats.servers.map((server) => {
-      const item = html('span');
-      const isCounted = counted.includes(server);
-      item.append(key(server.id), server.name, html('strong', '', isCounted ? String(server.now.players) : '–'));
-      if (isCounted && total) item.append(html('span', 'note', percent(server.now.players / total)));
-      return item;
-    }),
-  );
-  $('server-cards').replaceChildren(...stats.servers.map(serverCard));
-}
-
-/** A ranked list, best first. Equal values share a place. `full` is the value that fills the whole bar. */
-function rankList(target, entries, format, full) {
-  const known = entries
-    .filter((entry) => entry.value !== null)
-    .sort((a, b) => b.value - a.value || a.server.name.localeCompare(b.server.name));
-  const scale = full ?? Math.max(0, ...known.map((entry) => entry.value));
-  target.replaceChildren(
-    ...[...known, ...entries.filter((entry) => entry.value === null)].map((entry) => {
-      const item = html('li');
-      const place = entry.value === null ? '–' : String(known.findIndex((other) => other.value === entry.value) + 1).padStart(2, '0');
-      const line = html('div', 'rank-line');
-      const name = html('span', 'rank-name');
-      name.append(key(entry.server.id), entry.server.name);
-      line.append(name, html('strong', '', entry.value === null ? '–' : format(entry.value)));
-      const bar = html('div', 'rank-bar');
-      const fill = html('span');
-      fill.style.width = `${entry.value && scale ? Math.max(1.5, (entry.value / scale) * 100) : 0}%`;
-      fill.style.background = colorOf(entry.server.id);
-      bar.append(fill);
-      const main = html('div', 'rank-main');
-      main.append(line, bar, html('div', 'note', entry.note));
-      if (place === '01') item.className = 'top';
-      item.append(html('span', 'rank-no', place), main);
-      return item;
-    }),
-  );
-}
-
-function renderRanking() {
-  $('rank-sub').textContent = `over the ${RANGE_LABEL[stats.history.range]}`;
-  rankList(
-    $('rank-players'),
-    stats.servers.map((server) => {
-      const s = server.summary;
-      const now = statusOf(server.now).counted ? `now: ${server.now.players}` : 'offline now';
-      return { server, value: s.answered ? s.average : null, note: s.answered ? `most at once: ${s.peak}, ${now}` : 'No data yet' };
-    }),
-    (value) => `${value.toFixed(1)} on average`,
-  );
-  rankList(
-    $('rank-uptime'),
-    stats.servers.map((server) => {
-      const s = server.summary;
-      return { server, value: s.answered ? s.availability : null, note: s.answered ? `${s.onlineChecks.toLocaleString()} of ${s.answered.toLocaleString()} checks` : 'No data yet' };
-    }),
-    percent,
-    1,
-  );
-}
-
-function rowHead(server) {
-  const th = html('th');
-  th.scope = 'row';
-  th.append(key(server.id), server.name);
-  return th;
-}
-
-function cell(value, note) {
-  const td = html('td', '', value);
-  if (note) td.append(html('div', 'note', note));
-  return td;
-}
-
-function renderSummary() {
-  $('summary-rows').replaceChildren(
-    ...stats.servers.map((server) => {
-      const s = server.summary;
-      const row = html('tr');
-      if (!s.answered) row.append(rowHead(server), cell('–'), cell('–'), cell('–', 'No data yet'));
-      else row.append(rowHead(server), cell(String(s.peak), dayTimeFmt.format(s.peakAt)), cell(s.average.toFixed(1)), cell(percent(s.availability), `${s.answered.toLocaleString()} checks`));
-      return row;
-    }),
-  );
-}
-
-function mergePoints(points, bucketMs) {
-  const merged = [];
-  for (const row of points) {
-    const start = Math.floor(row[0] / bucketMs) * bucketMs;
-    const last = merged.at(-1);
-    if (!last || last[0] !== start) {
-      merged.push([start, ...row.slice(1)]);
-      continue;
-    }
-    for (let i = 1; i < row.length; i++) {
-      if (row[i] !== null && (last[i] === null || row[i] > last[i])) last[i] = row[i];
-    }
-  }
-  return merged;
-}
-
-function timeTicks(from, to, stepMs) {
-  const start = new Date(from);
-  start.setHours(0, 0, 0, 0);
-  let t = start.getTime();
-  while (t < from) t += stepMs;
-  const ticks = [];
-  for (; t <= to; t += stepMs) ticks.push(t);
-  return ticks;
-}
-
-/** Clears the chart and draws its horizontal gridlines and y labels. */
-function frame(chart, plot, height, yMax, step, margins) {
-  const width = Math.max(280, plot.clientWidth);
-  const m = { left: 36, right: 12, top: 12, bottom: 28, ...margins };
-  const plotW = width - m.left - m.right;
-  const plotH = height - m.top - m.bottom;
-  const r = (n) => Math.round(n * 10) / 10;
-  const Y = (v) => r(m.top + plotH - (v / yMax) * plotH);
-  chart.setAttribute('viewBox', `0 0 ${width} ${height}`);
-  chart.replaceChildren();
-  for (let i = 0; i * step <= yMax + step / 1000; i++) {
-    const v = Number((i * step).toFixed(4));
-    el('line', { x1: m.left, x2: width - m.right, y1: Y(v), y2: Y(v), stroke: v === 0 ? 'var(--axis)' : 'var(--grid)', 'stroke-width': 1 }, chart);
-    el('text', { x: m.left - 8, y: Y(v) + 4, 'text-anchor': 'end' }, chart).textContent = v;
-  }
-  const tick = (x, label) => {
-    el('line', { x1: x, x2: x, y1: m.top + plotH, y2: m.top + plotH + 4, stroke: 'var(--axis)', 'stroke-width': 1 }, chart);
-    el('text', { x, y: height - 8, 'text-anchor': 'middle' }, chart).textContent = label;
-  };
-  return { width, m, plotW, plotH, r, Y, tick };
-}
-
-function pickTickStep(span, plotW) {
-  const steps = [5 * 60e3, 10 * 60e3, 20 * 60e3, 30 * 60e3, 3600e3, 2 * 3600e3, 3 * 3600e3, 6 * 3600e3, 12 * 3600e3, DAY, 2 * DAY, 5 * DAY, 10 * DAY, 30 * DAY, 60 * DAY];
-  const most = Math.max(2, Math.floor(plotW / 96));
-  return steps.find((step) => span / step <= most) ?? steps.at(-1);
-}
-
-/** The legend doubles as a switch: click a server to hide or show it. */
-function renderLegend() {
-  $('players-legend').replaceChildren(
-    ...stats.servers.map((server) => {
-      const item = html('button');
-      item.type = 'button';
-      item.setAttribute('aria-pressed', String(!hiddenServers.has(server.id)));
-      item.append(key(server.id), server.name);
-      item.addEventListener('click', () => {
-        if (hiddenServers.has(server.id)) hiddenServers.delete(server.id);
-        else hiddenServers.add(server.id);
-        if (hiddenServers.size === stats.servers.length) hiddenServers.clear();
-        renderPlayers();
-      });
-      return item;
-    }),
-  );
-}
-
-let playersGeo = null;
-let navGeo = null;
-
-function renderPlayers() {
-  const chart = $('players-chart');
-  const plot = $('players-plot');
-  const servers = stats.servers;
-  const full = stats.history;
-  const key_ = full.range;
-  // The window on show: the whole loaded period, or the part zoomed into.
-  const from = zoom ? Math.max(full.from, zoom.from) : full.from;
-  const to = zoom ? Math.min(full.to, zoom.to) : full.to;
-  const shown = servers.map((_, i) => i).filter((i) => !hiddenServers.has(servers[i].id));
-  renderLegend();
-  $('zoom-reset').hidden = !zoom;
-  for (const button of document.querySelectorAll('[data-mode]')) {
-    button.setAttribute('aria-pressed', String((button.dataset.mode === 'stacked') === stacked));
-  }
-
-  // On a narrow plot, merge windows so each one stays wide enough to read.
-  const plotWidth = Math.max(280, plot.clientWidth) - 48;
-  const merge = Math.max(1, Math.ceil(2.5 / ((plotWidth * full.bucketMs) / (to - from))));
-  const bucketMs = full.bucketMs * merge;
-  const inWindow = full.points.filter((row) => row[0] + full.bucketMs > from && row[0] < to);
-  const points = merge === 1 ? inWindow : mergePoints(inWindow, bucketMs);
-
-  const minutes = Math.round(bucketMs / 60000);
-  // Say so when the saved history is shorter than the selected range.
-  const partial = !zoom && key_ !== 'all' && stats.since && stats.since - from > 2 * bucketMs;
-  $('players-sub').textContent =
-    (zoom ? `${dayTimeFmt.format(from)} to ${dayTimeFmt.format(to)}` : RANGE_LABEL[key_]) +
-    `, in ${minutes < 60 ? `${minutes}-minute` : `${minutes / 60}-hour`} steps` +
-    (partial ? `, counting since ${dayTimeFmt.format(stats.since)}` : '');
-
-  const topOf = (row) => (stacked ? shown.reduce((sum, i) => sum + (row[i + 1] ?? 0), 0) : Math.max(0, ...shown.map((i) => row[i + 1] ?? 0)));
-  const peak = Math.max(4, ...points.map(topOf));
-  const step = niceStep(peak / 4, true);
-  const yMax = Math.ceil(peak / step) * step;
-  const { width, m, plotW, plotH, r, Y, tick } = frame(chart, plot, 270, yMax, step);
-  const X = (t) => r(m.left + ((t - from) / (to - from)) * plotW);
-
-  const span = to - from;
-  const tickStep = pickTickStep(span, plotW);
-  for (const t of timeTicks(from, to, tickStep)) {
-    const x = X(t);
-    if (x < m.left + 14 || x > width - m.right - 14) continue;
-    const date = new Date(t);
-    const midnight = date.getHours() === 0 && date.getMinutes() === 0;
-    tick(x, tickStep >= DAY ? (span > 14 * DAY ? monthDayFmt.format(date) : dayLabel(date)) : midnight ? dayLabel(date) : timeFmt.format(date));
-  }
-
-  const spans = [];
-  for (const row of points) {
-    const x0 = X(Math.max(row[0], from));
-    const x1 = X(Math.min(row[0] + bucketMs, to));
-    if (x1 <= x0) continue;
-    const values = row.slice(1);
-    const known = shown.some((i) => values[i] !== null);
-    // In the stacked view each server sits on top of the ones before it.
-    let sum = 0;
-    const tops = values.map((v, i) => {
-      if (hiddenServers.has(servers[i].id)) return null;
-      if (!stacked) return v;
-      if (!known) return null;
-      sum += v ?? 0;
-      return sum;
-    });
-    const rows = shown.map((i) => ({ id: servers[i].id, name: servers[i].name, value: values[i] === null ? 'No data' : players(values[i]) }));
-    if (stacked && known && shown.length > 1) rows.push({ id: null, name: 'together', value: players(sum) });
-    spans.push({ x0, x1, values, tops, rows, when: `${dayTimeFmt.format(row[0])} to ${timeFmt.format(Math.min(row[0] + bucketMs, to))}` });
-  }
-
-  // Lines that sit on the same value are nudged a few pixels apart so each stays visible.
-  const nudge = (i) => (stacked ? 0 : (shown.indexOf(i) - (shown.length - 1) / 2) * 2.5);
-  const baseline = Y(0);
-  if (stacked) {
-    // Top layer first, so each lower layer is drawn over the one above it.
-    for (const i of [...shown].reverse()) {
-      let d = '';
-      let run = [];
-      const flush = () => {
-        if (!run.length) return;
-        d += `M${run[0].x0},${baseline}`;
-        for (const span_ of run) d += `V${Y(span_.tops[i])}H${span_.x1}`;
-        d += `V${baseline}Z`;
-        run = [];
-      };
-      for (const span_ of spans) {
-        if (span_.tops[i] === null) flush();
-        else run.push(span_);
-      }
-      flush();
-      if (d) el('path', { d, fill: colorOf(servers[i].id), 'fill-opacity': 0.88, stroke: 'var(--surface)', 'stroke-width': 1.5, 'stroke-linejoin': 'round' }, chart);
-    }
-  } else {
-    for (const i of shown) {
-      let line = '';
-      let area = '';
-      let open = false;
-      const close = () => {
-        if (open) area += `V${baseline}Z`;
-        open = false;
-      };
-      for (const span_ of spans) {
-        const v = span_.values[i];
-        if (v === null) {
-          close();
-          continue;
-        }
-        line += open ? `V${Y(v)}` : `M${span_.x0},${Y(v)}`;
-        area += open ? `V${Y(v)}` : `M${span_.x0},${baseline}V${Y(v)}`;
-        line += `H${span_.x1}`;
-        area += `H${span_.x1}`;
-        open = true;
-      }
-      close();
-      if (!line) continue;
-      el('path', { d: area, fill: colorOf(servers[i].id), 'fill-opacity': 0.07 }, chart);
-      const path = el('path', { d: line, fill: 'none', stroke: colorOf(servers[i].id), 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', transform: `translate(0 ${nudge(i)})` }, chart);
-      path.style.filter = `drop-shadow(0 0 3px ${colorOf(servers[i].id)})`;
-    }
-    const last = spans.at(-1);
-    for (const i of shown) {
-      if (last && last.values[i] !== null && to >= full.to) {
-        el('circle', { cx: last.x1, cy: Y(last.values[i]) + nudge(i), r: 5, fill: colorOf(servers[i].id), stroke: 'var(--surface)', 'stroke-width': 2 }, chart);
-      }
-    }
-  }
-
-  const cross = el('g', { visibility: 'hidden' }, chart);
-  const rule = el('line', { y1: m.top, y2: m.top + plotH, stroke: 'var(--muted)', 'stroke-width': 1 }, cross);
-  const dots = shown.map((i) => [i, el('circle', { r: 5, fill: colorOf(servers[i].id), stroke: 'var(--surface)', 'stroke-width': 2 }, cross)]);
-  el('rect', { x: m.left, y: m.top, width: plotW, height: plotH, fill: 'transparent' }, chart);
-
-  $('players-empty').hidden = spans.length >= 2;
-  playersGeo = { m, plotW, width, from, to };
-  playersHover.update({
-    spans,
-    width,
-    mark: (span_) => {
-      const x = r((span_.x0 + span_.x1) / 2);
-      rule.setAttribute('x1', x);
-      rule.setAttribute('x2', x);
-      for (const [i, dot] of dots) {
-        dot.setAttribute('cx', x);
-        dot.setAttribute('cy', span_.tops[i] === null ? -100 : Y(span_.tops[i]) + nudge(i));
-      }
-      cross.setAttribute('visibility', 'visible');
-    },
-    unmark: () => cross.setAttribute('visibility', 'hidden'),
-  });
-
-  $('players-head').replaceChildren(headCell('Time'), ...servers.map((server) => headCell(server.name)));
-  $('players-rows').replaceChildren(
-    ...full.points
-      .slice()
-      .reverse()
-      .map((row) => tableRow(`${dayTimeFmt.format(row[0])} to ${timeFmt.format(Math.min(row[0] + full.bucketMs, full.to))}`, ...row.slice(1).map((v) => (v === null ? 'No data' : v)))),
-  );
-  renderNavigator();
-}
-
-/** The strip under the chart: the whole loaded period, with a window showing what the chart is zoomed to. */
-function renderNavigator() {
-  const svg = $('players-nav');
-  const full = stats.history;
-  const servers = stats.servers;
-  const width = Math.max(280, $('players-plot').clientWidth);
-  const height = 46;
-  const left = 36;
-  const plotW = width - left - 12;
-  const round = (n) => Math.round(n * 10) / 10;
-  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
-  svg.replaceChildren();
-  const X = (t) => round(left + ((t - full.from) / (full.to - full.from)) * plotW);
-  const merge = Math.max(1, Math.ceil(2 / ((plotW * full.bucketMs) / (full.to - full.from))));
-  const bucketMs = full.bucketMs * merge;
-  const points = merge === 1 ? full.points : mergePoints(full.points, bucketMs);
-  const totals = points.map((row) => {
-    const known = row.slice(1).filter((v, i) => v !== null && !hiddenServers.has(servers[i].id));
-    return known.length ? known.reduce((a, b) => a + b, 0) : null;
-  });
-  const top = Math.max(1, ...totals.map((v) => v ?? 0));
-  const base = height - 4;
-  const Y = (v) => round(base - (v / top) * (height - 10));
-  let d = '';
-  let open = false;
-  points.forEach((row, i) => {
-    const x0 = X(Math.max(row[0], full.from));
-    const x1 = X(Math.min(row[0] + bucketMs, full.to));
-    if (totals[i] === null || x1 <= x0) {
-      if (open) d += `V${base}Z`;
-      open = false;
-      return;
-    }
-    d += open ? `V${Y(totals[i])}H${x1}` : `M${x0},${base}V${Y(totals[i])}H${x1}`;
-    open = true;
-  });
-  if (open) d += `V${base}Z`;
-  el('rect', { x: left, y: 2, width: plotW, height: height - 6, fill: 'var(--grid)', 'fill-opacity': 0.5 }, svg);
-  if (d) el('path', { d, fill: 'var(--accent-dim)', 'fill-opacity': 0.5 }, svg);
-  const a = X(zoom?.from ?? full.from);
-  const b = X(zoom?.to ?? full.to);
-  el('rect', { x: left, y: 2, width: Math.max(0, a - left), height: height - 6, fill: 'var(--page)', 'fill-opacity': 0.72 }, svg);
-  el('rect', { x: b, y: 2, width: Math.max(0, left + plotW - b), height: height - 6, fill: 'var(--page)', 'fill-opacity': 0.72 }, svg);
-  el('rect', { x: a, y: 2, width: Math.max(2, b - a), height: height - 6, fill: 'none', stroke: 'var(--accent)', 'stroke-width': 1 }, svg);
-  for (const x of [a, b]) el('rect', { x: x - 3, y: 13, width: 6, height: height - 28, rx: 2, fill: 'var(--accent)' }, svg);
-  navGeo = { left, plotW, width, a, b };
-}
-
-/** Zooms the chart to a period, keeping it inside what is loaded and at least two steps wide. */
-function setZoom(from, to) {
-  const full = stats.history;
-  const least = 2 * full.bucketMs;
-  from = Math.max(full.from, from);
-  to = Math.min(full.to, to);
-  if (to - from < least) {
-    const middle = (from + to) / 2;
-    from = Math.max(full.from, Math.min(middle - least / 2, full.to - least));
-    to = from + least;
-  }
-  zoom = to - from >= (full.to - full.from) * 0.995 ? null : { from, to };
-  playersHover.hide();
-  renderPlayers();
-}
-
-// Drag across the chart to zoom in. Touch is left alone so the page can still scroll.
-{
-  const chart = $('players-chart');
-  const box = $('zoom-box');
-  let drag = null;
-  const timeAt = (clientX) => {
-    const rect = chart.getBoundingClientRect();
-    const x = ((clientX - rect.left) / rect.width) * playersGeo.width;
-    const share = Math.min(1, Math.max(0, (x - playersGeo.m.left) / playersGeo.plotW));
-    return playersGeo.from + share * (playersGeo.to - playersGeo.from);
-  };
-  chart.addEventListener('pointerdown', (event) => {
-    if (event.pointerType === 'touch' || event.button !== 0 || !playersGeo) return;
-    drag = { startX: event.clientX, startT: timeAt(event.clientX), moved: false, id: event.pointerId };
-  });
-  chart.addEventListener('pointermove', (event) => {
-    if (!drag) return;
-    if (!drag.moved && Math.abs(event.clientX - drag.startX) < 6) return;
-    if (!drag.moved) chart.setPointerCapture(drag.id);
-    drag.moved = true;
-    const plotBox = $('players-plot').getBoundingClientRect();
-    const a = Math.min(drag.startX, event.clientX) - plotBox.left;
-    const b = Math.max(drag.startX, event.clientX) - plotBox.left;
-    box.hidden = false;
-    box.style.left = `${Math.max(0, a)}px`;
-    box.style.width = `${Math.max(0, b - Math.max(0, a))}px`;
-  });
-  chart.addEventListener('pointerup', (event) => {
-    if (!drag) return;
-    const done = drag;
-    drag = null;
-    box.hidden = true;
-    if (!done.moved) return;
-    const end = timeAt(event.clientX);
-    setZoom(Math.min(done.startT, end), Math.max(done.startT, end));
-  });
-  chart.addEventListener('pointercancel', () => {
-    drag = null;
-    box.hidden = true;
-  });
-  chart.addEventListener('dblclick', () => {
-    if (!zoom) return;
-    zoom = null;
-    renderPlayers();
-  });
-}
-
-// The strip: drag the window to move, drag an edge to resize, press elsewhere to jump there.
-{
-  const svg = $('players-nav');
-  let drag = null;
-  const at = (clientX) => {
-    const rect = svg.getBoundingClientRect();
-    const x = ((clientX - rect.left) / rect.width) * navGeo.width;
-    const share = Math.min(1, Math.max(0, (x - navGeo.left) / navGeo.plotW));
-    return { x, t: stats.history.from + share * (stats.history.to - stats.history.from) };
-  };
-  svg.addEventListener('pointerdown', (event) => {
-    if (!navGeo || !stats) return;
-    const full = stats.history;
-    const { x, t } = at(event.clientX);
-    let from = zoom?.from ?? full.from;
-    let to = zoom?.to ?? full.to;
-    let mode = 'move';
-    if (Math.abs(x - navGeo.a) <= 8) mode = 'from';
-    else if (Math.abs(x - navGeo.b) <= 8) mode = 'to';
-    else if (x < navGeo.a || x > navGeo.b) {
-      const width = to - from;
-      from = Math.min(Math.max(full.from, t - width / 2), full.to - width);
-      to = from + width;
-      setZoom(from, to);
-    }
-    drag = { mode, t, from, to };
-    svg.setPointerCapture(event.pointerId);
-    event.preventDefault();
-  });
-  svg.addEventListener('pointermove', (event) => {
-    if (!drag) return;
-    const full = stats.history;
-    const shift = at(event.clientX).t - drag.t;
-    const width = drag.to - drag.from;
-    if (drag.mode === 'move') {
-      const from = Math.min(Math.max(full.from, drag.from + shift), full.to - width);
-      setZoom(from, from + width);
-    } else if (drag.mode === 'from') {
-      setZoom(Math.min(drag.from + shift, drag.to - 2 * full.bucketMs), drag.to);
-    } else {
-      setZoom(drag.from, Math.max(drag.to + shift, drag.from + 2 * full.bucketMs));
-    }
-  });
-  for (const type of ['pointerup', 'pointercancel']) svg.addEventListener(type, () => (drag = null));
-}
-
-for (const button of document.querySelectorAll('[data-mode]')) {
-  button.addEventListener('click', () => {
-    stacked = button.dataset.mode === 'stacked';
-    renderPlayers();
-  });
-}
-$('zoom-reset').addEventListener('click', () => {
-  zoom = null;
-  renderPlayers();
-});
-
-const dailyHover = hoverable($('daily-chart'), $('daily-plot'), $('daily-tip'));
-
-/** Grouped bars: the most operatives each server had at once, day by day. */
-function renderDaily() {
-  const chart = $('daily-chart');
-  const plot = $('daily-plot');
-  const servers = stats.servers;
-  const today = Math.floor(stats.now / DAY) * DAY;
-  const count = Math.max(280, plot.clientWidth) - 48 < 520 ? 14 : 30;
-  const byDay = servers.map((server) => new Map(server.allTime.days.map((day) => [day[0], day])));
-  const days = Array.from({ length: count }, (_, k) => today - (count - 1 - k) * DAY);
-  const peak = Math.max(4, ...days.flatMap((t) => byDay.map((map) => map.get(t)?.[3] ?? 0)));
-  const step = niceStep(peak / 3, true);
-  const yMax = Math.ceil(peak / step) * step;
-  const { width, m, plotW, r, Y, tick } = frame(chart, plot, 190, yMax, step);
-  const band = plotW / count;
-  const gap = 2;
-  const barW = Math.max(2, Math.min(24, (band * 0.8 - gap * (servers.length - 1)) / servers.length));
-  const groupW = barW * servers.length + gap * (servers.length - 1);
-  const baseline = Y(0);
-  const bars = [];
-  const spans = days.map((t, k) => {
-    const x0 = r(m.left + k * band);
-    const x1 = r(m.left + (k + 1) * band);
-    const start = (x0 + x1) / 2 - groupW / 2;
-    const group = [];
-    servers.forEach((server, i) => {
-      const day = byDay[i].get(t);
-      if (!day || !day[3]) return;
-      const x = r(start + i * (barW + gap));
-      const y = Y(day[3]);
-      const corner = Math.min(4, barW / 2, baseline - y);
-      const d = `M${x},${baseline}V${y + corner}Q${x},${y} ${x + corner},${y}H${r(x + barW - corner)}Q${r(x + barW)},${y} ${r(x + barW)},${y + corner}V${baseline}Z`;
-      group.push(el('path', { d, fill: colorOf(server.id) }, chart));
-    });
-    bars.push(group);
-    return {
-      x0,
-      x1,
-      rows: servers.map((server, i) => {
-        const day = byDay[i].get(t);
-        return { id: server.id, name: server.name, value: day ? `most ${day[3]}, average ${(day[4] / day[1]).toFixed(1)}` : 'No data' };
-      }),
-      when: `${utcDayFmt.format(t)} (UTC day)`,
-    };
-  });
-  const every = count > 14 ? 5 : 2;
-  days.forEach((t, k) => {
-    if ((count - 1 - k) % every === 0) tick(r(m.left + (k + 0.5) * band), utcDayFmt.format(t));
-  });
-  el('rect', { x: m.left, y: m.top, width: plotW, height: 190 - m.top - m.bottom, fill: 'transparent' }, chart);
-  dailyHover.update({
-    spans,
-    width,
-    mark: (span_, index) => bars.forEach((group, k) => group.forEach((bar) => bar.setAttribute('fill-opacity', k === index ? 1 : 0.4))),
-    unmark: () => bars.forEach((group) => group.forEach((bar) => bar.setAttribute('fill-opacity', 1))),
-  });
-}
-
-/** One switch for the two views that show a single server. */
-function renderPicker() {
-  if (!stats.servers.some((server) => server.id === picked)) picked = stats.servers[0].id;
-  $('server-picker').replaceChildren(
-    ...stats.servers.map((server) => {
-      const button = html('button');
-      button.type = 'button';
-      button.setAttribute('aria-pressed', String(server.id === picked));
-      button.append(key(server.id), server.name);
-      button.addEventListener('click', () => {
-        picked = server.id;
-        renderPicker();
-      });
-      return button;
-    }),
-  );
-  renderBreakdown();
-  renderWeek();
-}
-
-function renderBreakdown() {
-  const days = stats.servers.find((server) => server.id === picked).allTime.days;
-  const rows = days
-    .map(([t, answered, online, peak, sum], k) => {
-      const average = sum / answered;
-      const before = k > 0 ? days[k - 1][4] / days[k - 1][1] : null;
-      const diff = before === null ? null : average - before;
-      const change = diff === null ? '–' : `${diff >= 0.05 ? '▲' : diff <= -0.05 ? '▼' : '='} ${Math.abs(diff).toFixed(1)}`;
-      return tableRow(utcDayFmt.format(t), peak, average.toFixed(1), change, percent(online / answered));
-    })
-    .reverse()
-    .slice(0, 60);
-  $('breakdown-rows').replaceChildren(...(rows.length ? rows : [tableRow('No data yet', '–', '–', '–', '–')]));
-}
-
-/** Weekday by hour: when operatives are usually on, for the picked server. */
-function renderWeek() {
-  const server = stats.servers.find((item) => item.id === picked);
-  const utc = server.allTime.weekUtc ?? [];
-  // The totals arrive in UTC, Sunday first. Shift them to this time zone.
-  const shift = Math.round(-new Date().getTimezoneOffset() / 60);
-  const local = Array.from({ length: 168 }, () => [0, 0]);
-  utc.forEach((slot, index) => {
-    local[(index + shift + 168) % 168] = slot;
-  });
-  const averages = local.map(([sum, n]) => (n ? sum / n : null));
-  const top = Math.max(0, ...averages.map((v) => v ?? 0));
-  const dayName = (weekday) => weekdayFmt.format(new Date(2024, 0, 7 + weekday)); // 7 January 2024 was a Sunday
-  const grid = $('week');
-  grid.replaceChildren(html('span'));
-  for (let hour = 0; hour < 24; hour++) grid.append(html('span', 'week-hour', hour % 6 === 0 ? hourLabel(hour) : ''));
-  for (const weekday of [1, 2, 3, 4, 5, 6, 0]) {
-    grid.append(html('span', 'week-day', dayName(weekday)));
-    for (let hour = 0; hour < 24; hour++) {
-      const value = averages[weekday * 24 + hour];
-      const cellNode = html('i');
-      const label = `${dayName(weekday)}, ${hourLabel(hour)} to ${hourLabel(hour + 1)}`;
-      if (value === null) {
-        cellNode.title = `${label}: no data`;
-      } else {
-        cellNode.style.background = colorOf(server.id);
-        cellNode.style.opacity = String(top ? 0.12 + 0.88 * (value / top) : 0.12);
-        cellNode.title = `${label}: ${value.toFixed(1)} operatives on average`;
-      }
-      grid.append(cellNode);
-    }
-  }
-  const filled = averages.filter((v) => v !== null).length;
-  $('week-sub').textContent = `${server.name}, average operatives by weekday and hour, in your time zone`;
-  $('week-note').textContent = filled < 168 ? `${filled} of 168 hours have data so far. It fills in over a week.` : '';
-  $('week-key').style.setProperty('--c', colorOf(server.id));
-}
-
-function headCell(text) {
-  const th = html('th', '', text);
-  th.scope = 'col';
-  return th;
-}
-
-function tableRow(...cells) {
-  const row = html('tr');
-  for (const text of cells) row.append(html('td', '', String(text)));
-  return row;
-}
-
-function renderUptime() {
-  const today = Math.floor(stats.now / DAY) * DAY;
-  $('uptime').replaceChildren(
-    ...stats.servers.map((server) => {
-      const byDay = new Map(server.allTime.days.map(([t, answered, online]) => [t, { answered, online }]));
-      let answered = 0;
-      let online = 0;
-      const strip = html('div', 'strip');
-      for (let i = 89; i >= 0; i--) {
-        const t = today - i * DAY;
-        const day = byDay.get(t);
-        const cellNode = html('i');
-        const label = utcDayFmt.format(t);
-        if (!day) {
-          cellNode.title = `${label}: no data`;
-        } else {
-          answered += day.answered;
-          online += day.online;
-          const share = day.online / day.answered;
-          cellNode.className = share >= 0.995 ? 'good' : share >= 0.95 ? 'warning' : 'critical';
-          cellNode.title = `${label}: online ${percent(share)} of the time, ${day.answered.toLocaleString()} checks`;
-        }
-        strip.append(cellNode);
-      }
-      const row = html('div', 'uptime-row');
-      const head = html('div', 'uptime-head');
-      const name = html('span', 'name');
-      name.append(key(server.id), server.name);
-      const total = html('span');
-      if (answered) total.append(html('strong', '', percent(online / answered)), html('span', 'note', ` over ${byDay.size} ${byDay.size === 1 ? 'day' : 'days'}`));
-      else total.append(html('span', 'note', 'no data yet'));
-      head.append(name, total);
-      strip.setAttribute('role', 'img');
-      strip.setAttribute('aria-label', answered ? `${server.name}: online ${percent(online / answered)} of the time over ${byDay.size} days of data` : `${server.name}: no data yet`);
-      row.append(head, strip);
-      return row;
-    }),
-  );
-}
-
-function renderRecords() {
-  $('alltime-scope').textContent = stats.since ? `counting since ${monthDayFmt.format(stats.since)}` : '';
-  $('records-rows').replaceChildren(
-    ...stats.servers.map((server) => {
-      const a = server.allTime;
-      const row = html('tr');
-      const record = a.recordPeak === null ? cell('–', 'No data yet') : cell(String(a.recordPeak), dayTimeFmt.format(a.recordAt));
-      let seen = cell('–', 'Nobody jacked in yet');
-      if (statusOf(server.now).counted && server.now.players > 0) seen = cell('Now', `${players(server.now.players)} jacked in`);
-      else if (a.lastPlayersAt) seen = cell(`${duration(stats.now - a.lastPlayersAt)} ago`, dayTimeFmt.format(a.lastPlayersAt));
-      row.append(rowHead(server), record, seen);
-      return row;
-    }),
-  );
-}
-
-const hourCharts = new Map();
-
-function hourChart(server) {
-  if (hourCharts.has(server.id)) return hourCharts.get(server.id);
-  const root = html('div', 'mini');
-  const head = html('div', 'mini-head');
-  const peakNote = html('span', 'note');
-  head.append(key(server.id), server.name, peakNote);
-  const plot = html('div', 'plot');
-  const chart = el('svg', { height: 120, tabindex: 0, role: 'img', 'aria-label': `Average operatives by hour of day on ${server.name}. Use the left and right arrow keys to read values.` }, plot);
-  const tip = html('div', 'tooltip');
-  tip.hidden = true;
-  tip.append(html('div', 'tip-rows'), html('div', 'when'));
-  plot.append(tip);
-  root.append(head, plot);
-  $('hours-charts').append(root);
-  const made = { chart, plot, peakNote, hover: hoverable(chart, plot, tip) };
-  hourCharts.set(server.id, made);
-  return made;
-}
-
-/** Hourly totals come in UTC. This turns them into 24 local-time averages (null where there is no data). */
-function localAverages(hoursUtc) {
-  const slots = Array.from({ length: 24 }, () => [0, 0]);
-  hoursUtc.forEach(([sum, n], utcHour) => {
-    const at = new Date();
-    at.setUTCHours(utcHour, 0, 0, 0);
-    slots[at.getHours()][0] += sum;
-    slots[at.getHours()][1] += n;
-  });
-  return slots.map(([sum, n]) => ({ average: n ? sum / n : null, checks: n }));
-}
-
-function renderHours() {
-  const perServer = stats.servers.map((server) => localAverages(server.allTime.hoursUtc));
-  const covered = Math.max(...perServer.map((slots) => slots.filter((slot) => slot.average !== null).length));
-  $('hours-note').textContent = covered < 24 ? 'Needs a full day of data first.' : '';
-  stats.servers.forEach((server, s) => {
-    const { chart, plot, peakNote, hover } = hourChart(server);
-    const slots = perServer[s];
-    const top = Math.max(...slots.map((slot) => slot.average ?? 0)) || 1;
-    const step = niceStep(top / 3, false);
-    const yMax = Math.ceil(top / step - 1e-9) * step;
-    const { width, m, plotW, r, Y, tick } = frame(chart, plot, 120, yMax, step, { top: 8, bottom: 24 });
-
-    const band = plotW / 24;
-    const barWidth = Math.min(24, band * 0.7);
-    const baseline = Y(0);
-    const bars = [];
-    const spans = slots.map((slot, hour) => {
-      const x0 = r(m.left + hour * band);
-      const x1 = r(m.left + (hour + 1) * band);
-      if (slot.average) {
-        const x = r((x0 + x1) / 2 - barWidth / 2);
-        const y = Y(slot.average);
-        // Rounded at the data end, square at the baseline.
-        const corner = Math.min(4, barWidth / 2, baseline - y);
-        const d = `M${x},${baseline}V${y + corner}Q${x},${y} ${x + corner},${y}H${r(x + barWidth - corner)}Q${r(x + barWidth)},${y} ${r(x + barWidth)},${y + corner}V${baseline}Z`;
-        bars[hour] = el('path', { d, fill: colorOf(server.id) }, chart);
-      }
-      return {
-        x0,
-        x1,
-        rows: [{ id: server.id, value: slot.average === null ? 'No data' : `${slot.average.toFixed(1)} operatives on average` }],
-        when: `${hourLabel(hour)} to ${hourLabel(hour + 1)}` + (slot.average === null ? '' : `, from ${slot.checks.toLocaleString()} checks`),
-      };
-    });
-    const every = plotW < 420 ? 6 : 3;
-    for (let hour = 0; hour < 24; hour += every) tick(r(m.left + (hour + 0.5) * band), hourLabel(hour));
-    el('rect', { x: m.left, y: m.top, width: plotW, height: 120 - m.top - m.bottom, fill: 'transparent' }, chart);
-
-    const best = slots.reduce((bestHour, slot, hour) => (slot.average > (slots[bestHour]?.average ?? 0) ? hour : bestHour), -1);
-    peakNote.textContent = best < 0 || covered < 24 ? '' : `busiest around ${hourLabel(best)}`;
-    hover.update({
-      spans,
-      width,
-      mark: (span, index) => bars.forEach((bar, hour) => bar.setAttribute('fill-opacity', hour === index ? 1 : 0.4)),
-      unmark: () => bars.forEach((bar) => bar.setAttribute('fill-opacity', 1)),
-    });
-  });
-
-  $('hours-head').replaceChildren(headCell('Hour'), ...stats.servers.map((server) => headCell(server.name)));
-  $('hours-rows').replaceChildren(
-    ...Array.from({ length: 24 }, (_, hour) =>
-      tableRow(`${hourLabel(hour)} to ${hourLabel(hour + 1)}`, ...perServer.map((slots) => (slots[hour].average === null ? 'No data' : slots[hour].average.toFixed(1)))),
-    ),
-  );
-}
-
-function renderOutages() {
-  const all = stats.servers
-    .flatMap((server) => server.allTime.outages.map((outage) => ({ ...outage, server })))
-    .sort((a, b) => b.from - a.from)
-    .slice(0, 12);
-  if (!all.length) {
-    const since = stats.since ? `None since ${monthDayFmt.format(stats.since)}.` : 'No data yet.';
-    $('outages').replaceChildren(html('li', 'note', since));
-    return;
-  }
-  $('outages').replaceChildren(
-    ...all.map((outage) => {
-      const item = html('li');
-      const what = html('span', 'state');
-      const offline = outage.kind === 'offline';
-      const why = outage.detail ? ` (${outage.detail})` : '';
-      what.append(stateIcon(offline ? 'critical' : 'unknown'), `${outage.server.name}: ${offline ? 'server down' : 'no answer'}${why}`);
-      const length = `${outage.ongoing ? 'still going after' : 'lasted'} ${duration(outage.to - outage.from)}`;
-      item.append(what, html('span', 'note', `${dayTimeFmt.format(outage.from)}, ${length}`));
-      return item;
-    }),
-  );
-}
-
-function renderAbout() {
-  // One column per server, so the differences read across.
-  const described = stats.servers.filter((server) => server.about?.glance);
-  $('glance-card').hidden = !described.length;
-  $('glance-head').replaceChildren(
-    headCell(''),
-    ...described.map((server) => {
-      const th = headCell('');
-      th.append(key(server.id), ` ${server.name}`);
-      return th;
-    }),
-  );
-  const discordSize = (server) => {
-    const c = server.community;
-    if (!c || c.members === undefined) return '–';
-    return `${c.members.toLocaleString()}${c.shared ? ' (shared)' : ''}`;
-  };
-  const rows = [['World', 'world'], ['Since', 'since'], ['Who can jack in', 'access'], ['Fighting', 'combat'], ['Fighting other operatives', 'pvp'], ['In short', 'focus'], ['Discord members', discordSize]];
-  $('glance-rows').replaceChildren(
-    ...rows.map(([label, field]) => {
-      const row = html('tr');
-      const th = html('th', '', label);
-      th.scope = 'row';
-      row.append(th, ...described.map((server) => html('td', '', typeof field === 'function' ? field(server) : server.about.glance[field])));
-      return row;
-    }),
-  );
-
-  $('about').replaceChildren(
-    ...stats.servers
-      .filter((server) => server.about)
-      .map((server) => {
-        const about = server.about;
-        const card = html('div', 'card');
-        card.style.setProperty('--c', colorOf(server.id));
-
-        // Name and world on the left, the live status on the right.
-        const head = html('div', 'about-head');
-        const title = html('div');
-        title.append(html('h3', '', server.name));
-        if (about.glance?.world) title.append(html('div', 'world', `World ${about.glance.world}`));
-        const status = statusOf(server.now);
-        const badge = html('span', 'status');
-        badge.append(html('span', `led ${status.led}`), status.counted ? `${status.text} · ${server.now.players}` : status.text);
-        head.append(title, badge);
-
-        const chips = html('div', 'chips');
-        for (const [label, field] of [['Join', 'access'], ['PvP', 'pvp'], ['Since', 'since']]) {
-          if (!about.glance?.[field]) continue;
-          const chip = html('span', 'chip');
-          chip.append(html('span', 'chip-label', label), about.glance[field]);
-          chips.append(chip);
-        }
-
-        const list = html('dl');
-        for (const fact of about.facts) list.append(html('dt', '', fact.label), html('dd', '', fact.value));
-        if (about.timeline) {
-          const steps = html('ul', 'timeline');
-          for (const [when, what] of about.timeline) {
-            const step = html('li');
-            step.append(html('span', 'when', when), html('span', '', what));
-            steps.append(step);
-          }
-          const holder = html('dd');
-          holder.append(steps);
-          list.append(html('dt', '', 'Timeline'), holder);
-        }
-        const c = server.community;
-        if (c) {
-          const holder = html('dd', 'community');
-          if (c.members !== undefined) {
-            for (const [value, label] of [[c.members, 'members'], [c.online ?? 0, 'online now']]) {
-              const stat = html('span');
-              stat.append(html('strong', '', value.toLocaleString()), ` ${label}`);
-              holder.append(stat);
-            }
-          }
-          holder.append(html('span', 'note', c.shared ? `the shared fan Discord${c.name ? `, "${c.name}"` : ''}` : `its own Discord, opened ${monthYearFmt.format(new Date(c.opened))}`));
-          list.append(html('dt', '', 'Community'), holder);
-        }
-        const links = html('div', 'links');
-        links.append(...about.links.map((item) => link(item.label, item.url)));
-        card.append(head, chips, html('div', 'prose', about.summary), list, links);
-        return card;
-      }),
-  );
-}
-
-function renderFooter() {
-  const sources = html('p', '', `numbers come from each server's own status page, checked every ${stats.sampleSeconds === 60 ? 'minute' : `${stats.sampleSeconds} seconds`}`);
-  const rule = html('p', '', 'one odd reading is checked again before a server is called down');
-  const legal = html('p', '', 'fan page, not run by the server teams or the owners of The Matrix Online');
-  $('footer').replaceChildren(sources, rule, legal);
-}
-
-function renderUpdated() {
-  if (!loadedAt) return;
-  const seconds = Math.round((Date.now() - loadedAt) / 1000);
-  $('updated').textContent = seconds < 5 ? 'updated just now' : seconds < 120 ? `updated ${seconds} s ago` : `last update ${dayTimeFmt.format(loadedAt)}`;
-}
-
-function showBanner(message) {
-  const banner = $('banner');
-  banner.hidden = !message;
-  if (message) banner.replaceChildren(stateIcon('critical'), document.createTextNode(message));
-}
-
-function renderRecorded() {
-  renderRanking();
-  renderPlayers();
-  renderSummary();
-  renderDaily();
-  renderPicker();
-  renderUptime();
-  renderHours();
-  renderRecords();
-  renderOutages();
-}
-
-function renderAll() {
-  renderNow();
-  $('history-off').hidden = Boolean(stats.storage);
-  $('recorded').hidden = !stats.storage;
-  if (stats.storage) renderRecorded();
-  renderAbout();
-  renderFooter();
-  renderUpdated();
-}
-
-/** Shows the data saved from the last visit right away, while fresh data loads. */
-function showSaved() {
-  try {
-    const saved = JSON.parse(localStorage.getItem('last-stats'));
-    if (!saved?.servers || !(saved.history?.range in RANGE_LABEL)) return;
-    stats = saved;
-    loadedAt = saved.now;
-    range = saved.history.range;
-    renderAll();
-  } catch (err) {
-    stats = null;
-    loadedAt = null;
-  }
-}
-
-async function load({ dim = false } = {}) {
-  const scoped = document.querySelectorAll('.scoped');
-  if (dim) scoped.forEach((node) => node.classList.add('stale'));
-  try {
-    const res = await fetch(`/api/stats?range=${range}`);
-    if (!res.ok) throw new Error(`status ${res.status}`);
-    const fresh = await res.json();
-    if (zoom && stats) {
-      // A window that reached the right edge keeps following the newest data.
-      const width = zoom.to - zoom.from;
-      const follows = stats.history.to - zoom.to < 2 * stats.history.bucketMs;
-      zoom = follows ? { from: fresh.history.to - width, to: fresh.history.to } : zoom;
-      if (zoom.from < fresh.history.from || zoom.to > fresh.history.to || fresh.history.range !== stats.history.range) zoom = null;
-    }
-    stats = fresh;
-    loadedAt = Date.now();
-    showBanner('');
-    renderAll();
-    // Remember the last good data, so there is something to show if the next load fails.
-    try {
-      localStorage.setItem('last-stats', JSON.stringify(stats));
-    } catch {}
-  } catch (err) {
-    console.error(err);
-    showBanner(
-      stats
-        ? `Could not refresh. Showing the last data, from ${dayTimeFmt.format(loadedAt)}. Trying again every 30 seconds.`
-        : 'The stats could not be loaded. This page retries by itself every 30 seconds.',
-    );
-  } finally {
-    scoped.forEach((node) => node.classList.remove('stale'));
-  }
-}
-
-function selectRange(next) {
-  range = next;
-  try {
-    localStorage.setItem('range', next);
-  } catch {}
-  for (const button of document.querySelectorAll('.ranges button')) {
-    button.setAttribute('aria-pressed', String(button.dataset.range === range));
-  }
-  zoom = null;
-  playersHover.hide();
-  load({ dim: true });
-}
-
-for (const button of document.querySelectorAll('.ranges button')) {
-  button.addEventListener('click', () => selectRange(button.dataset.range));
-}
-
-for (const toggle of document.querySelectorAll('[data-table]')) {
-  toggle.addEventListener('click', () => {
-    const wrap = $(toggle.dataset.table);
-    wrap.hidden = !wrap.hidden;
-    toggle.textContent = wrap.hidden ? 'Show as table' : 'Hide table';
-    toggle.setAttribute('aria-expanded', String(!wrap.hidden));
-  });
-}
-
-/** Falling characters behind the header. Plain letters and digits, drawn on a canvas. */
-function startRain() {
-  const canvas = $('rain');
-  const ctx = canvas.getContext('2d');
-  const glyphs = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ<>[]{}=+-*/|:;._';
-  const size = 14;
-  let drops = [];
-  let w = 0;
-  let h = 0;
-  const resize = () => {
-    const scale = Math.min(2, window.devicePixelRatio || 1);
-    w = canvas.clientWidth;
-    h = canvas.clientHeight;
-    canvas.width = w * scale;
-    canvas.height = h * scale;
-    ctx.setTransform(scale, 0, 0, scale, 0, 0);
-    drops = Array.from({ length: Math.ceil(w / size) }, () => Math.random() * -30);
-  };
-  const step = () => {
-    ctx.fillStyle = 'rgba(3, 6, 4, 0.16)';
-    ctx.fillRect(0, 0, w, h);
-    ctx.font = `${size}px ui-monospace, Menlo, Consolas, monospace`;
-    drops.forEach((y, i) => {
-      ctx.fillStyle = Math.random() < 0.07 ? '#d4ffe5' : '#27c46b';
-      ctx.fillText(glyphs[Math.floor(Math.random() * glyphs.length)], i * size, y * size);
-      drops[i] = y * size > h && Math.random() > 0.96 ? 0 : y + 1;
-    });
-  };
-  resize();
-  window.addEventListener('resize', resize);
-  // With reduced motion, draw one still frame and stop.
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    for (let i = 0; i < 40; i++) step();
-    return;
-  }
-  let timer = setInterval(step, 75);
-  document.addEventListener('visibilitychange', () => {
-    clearInterval(timer);
-    if (!document.hidden) timer = setInterval(step, 75);
-  });
-}
-
-new ResizeObserver(() => {
-  if (stats?.storage) {
-    renderPlayers();
-    renderDaily();
-    renderHours();
-  }
-}).observe($('players-plot'));
-setInterval(() => document.hidden || load(), 30_000);
-setInterval(renderUpdated, 1000);
-document.addEventListener('visibilitychange', () => document.hidden || load());
-startRain();
-if (!linked) showSaved();
-selectRange(range);
-</script>
+<script defer src="/assets/app.js"></script>
 </body>
 </html>

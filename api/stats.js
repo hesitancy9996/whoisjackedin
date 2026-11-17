@@ -6,8 +6,8 @@ export default async function handler(req, res) {
     res.status(405).end();
     return;
   }
-  // Only ?range= is known, so made-up parameters cannot be used to dodge the cache.
-  if (Object.keys(req.query ?? {}).some((name) => name !== 'range')) {
+  // Only ?range= and ?tz= are known, so made-up parameters cannot be used to dodge the cache.
+  if (Object.keys(req.query ?? {}).some((name) => name !== 'range' && name !== 'tz')) {
     res.status(400).json({ error: 'unknown parameter' });
     return;
   }
@@ -17,8 +17,14 @@ export default async function handler(req, res) {
     res.status(400).json({ error: 'unknown range' });
     return;
   }
+  // The viewer's time zone, as whole hours ahead of UTC. Only real offsets are answered.
+  const tz = req.query?.tz === undefined ? 0 : Number(req.query.tz);
+  if (!Number.isInteger(tz) || tz < -12 || tz > 14 || String(tz) !== String(req.query?.tz ?? 0)) {
+    res.status(400).json({ error: 'unknown time zone' });
+    return;
+  }
   try {
-    const stats = await buildStats(String(range ?? ''));
+    const stats = await buildStats(String(range ?? ''), tz);
     res.setHeader('cache-control', 'public, max-age=0, s-maxage=20, stale-while-revalidate=40');
     res.status(200).json(stats);
   } catch (err) {
